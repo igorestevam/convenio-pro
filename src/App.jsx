@@ -28,7 +28,7 @@ let _uid = Date.now();
 const uid = () => String(++_uid);
 
 /* ─── API BASE URL ──────────────────────────────────────────────── */
-const API_URL = 'https://convenio-api.onrender.com/api';
+const API_URL = 'https://convenio-api-nrfx.onrender.com';
 
 /* ═══ Shared UI ═════════════════════════════════════════════════════════ */
 
