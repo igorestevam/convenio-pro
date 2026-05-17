@@ -789,7 +789,7 @@ export default function App() {
   const fileRef = useRef();
 
   useEffect(() => {
-    fetch('https://convenio-api.onrender.com/')
+    fetch('https://convenio-api.onrender.com/api/clientes')
       .then(res => res.json())
       .then(data => setClients(data))
       .catch(err => showToast("Erro ao carregar o banco de dados", "error"));
