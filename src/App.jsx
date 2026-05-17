@@ -789,7 +789,7 @@ export default function App() {
   const fileRef = useRef();
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/clientes')
+    fetch('https://convenio-api.onrender.com/')
       .then(res => res.json())
       .then(data => setClients(data))
       .catch(err => showToast("Erro ao carregar o banco de dados", "error"));
@@ -867,7 +867,7 @@ export default function App() {
 
     try {
       // Manda para o Node.js
-      await fetch('http://localhost:5000/api/clientes', {
+      await fetch('https://convenio-api.onrender.com/api/clientes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novoCliente)
@@ -890,7 +890,7 @@ export default function App() {
     const novoConsumo = { id: uid(), date, desc, value };
 
     try {
-      await fetch(`http://localhost:5000/api/clientes/${clientId}/consumos`, {
+      await fetch(`https://convenio-api.onrender.com/api/clientes/${clientId}/consumos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novoConsumo)
