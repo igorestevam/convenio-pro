@@ -17,12 +17,12 @@ export default defineConfig({
         display: 'standalone', // Faz abrir como um programa (sem a barra de endereço do Chrome)
         icons: [
           {
-            src: '/icon-192.png',
+            src: 'logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/icon-512.png',
+            src: 'logo.png',
             sizes: '512x512',
             type: 'image/png'
           }
