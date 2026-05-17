@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate', // Atualiza o app automaticamente quando você subir código novo
-      includeAssets: ['logo192x192', 'logo512x512'], // Os ícones que você colocou na pasta public
+      includeAssets: ['logo192x192.png', 'logo512x512.png'], // Os ícones que você colocou na pasta public
       manifest: {
         name: 'ConvênioPro',
         short_name: 'ConvênioPro',
