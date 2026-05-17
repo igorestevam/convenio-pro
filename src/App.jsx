@@ -83,8 +83,8 @@ function Lbl({ children }) {
   return <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .6, marginBottom: 6 }}>{children}</div>;
 }
 
-function Inp({ value, onChange, placeholder, type = "text", style = {} }) {
-  return <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 14, background: "#fff", outline: "none", fontFamily: "inherit", ...style }} />;
+function Inp({ value, onChange, placeholder, type="text", style={} }) {
+  return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{ width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10, border:"1px solid #E5E7EB",fontSize:14,background:"#fff",outline:"none", fontFamily:"inherit", color:"#111827", ...style }} />;
 }
 
 function Toast({ msg, type, onDone }) {
