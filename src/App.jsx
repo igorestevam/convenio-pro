@@ -749,6 +749,7 @@ function FaturasTab({
 /* ═══ App ════════════════════════════════════════════════════════════════ */
 
 export default function App() {
+  const [clients,  setClients]  = useState([]);
   const [fatStatus,setFatStatus]= useState({});
   const [selId,    setSelId]    = useState(null);
   const [tab,      setTab]      = useState("clientes");
