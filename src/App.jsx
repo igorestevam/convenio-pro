@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
-  Users, Plus, Search, Trash2, ArrowLeft,
+  Users, Plus, Upload, Download, Search, Trash2, ArrowLeft,
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
-  Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Lock, Download, Edit
+  Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Lock, Edit
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -132,6 +132,12 @@ function EditClientModal({ client, onUpdate, onDelete, onClose }) {
   const [form, setForm] = useState({ name: client.name, email: client.email||"", phone: client.phone||"", active: client.active!==false });
   const canDelete = client.consumos.length === 0;
 
+  const handleDeleteClick = () => {
+    if (window.confirm("Tem certeza que deseja excluir este cliente PERMANENTEMENTE? Esta ação não pode ser desfeita.")) {
+      onDelete();
+    }
+  };
+
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(10,10,20,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(6px)" }}>
       <Card style={{width:420,maxWidth:"92vw",padding:28,animation:"toastIn .2s ease"}}>
@@ -154,7 +160,7 @@ function EditClientModal({ client, onUpdate, onDelete, onClose }) {
 
         <div style={{display:"flex",gap:10, alignItems:"center"}}>
           {canDelete ? (
-            <button onClick={onDelete} style={{ background:"none", border:"none", color:"#EF4444", cursor:"pointer", padding:8, display:"flex", alignItems:"center", gap:4, fontWeight:700, fontSize:12, fontFamily:"inherit" }} title="Excluir cliente em definitivo"><Trash2 size={16}/> Excluir</button>
+            <button onClick={handleDeleteClick} style={{ background:"none", border:"none", color:"#EF4444", cursor:"pointer", padding:8, display:"flex", alignItems:"center", gap:4, fontWeight:700, fontSize:12, fontFamily:"inherit" }} title="Excluir cliente em definitivo"><Trash2 size={16}/> Excluir</button>
           ) : (
              <span style={{ fontSize:10, color:"#9CA3AF", maxWidth: 120, lineHeight: 1.2 }}>Exclusão bloqueada (possui consumos)</span>
           )}
@@ -229,14 +235,34 @@ function useFormField(clientId, field) {
 }
 
 const inpBase = { boxSizing:"border-box", padding:"7px 10px", borderRadius:8, border:"1px solid #E5E7EB", fontSize:13, background:"#FAFAFA", outline:"none", fontFamily:"inherit" };
-function InlineDate({ clientId }) { const [dt, setDt] = useFormField(clientId, "dt"); return <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{...inpBase,width:145}}/>; }
-function InlineValue({ clientId }) { const [val, setVal] = useFormField(clientId, "val"); return <input type="text" value={val} onChange={e=>setVal(e.target.value)} placeholder="0,00" style={{...inpBase,width:110,textAlign:"right"}}/>; }
+
+function InlineDate({ clientId }) { 
+  const [dt, setDt] = useFormField(clientId, "dt"); 
+  return <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{...inpBase,width:145}}/>; 
+}
+
+function InlineValue({ clientId, onAddConsumo, onToast }) { 
+  const [val, setVal] = useFormField(clientId, "val"); 
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      const form = getForm(clientId); 
+      const v = parseFloat(String(form.val).replace(",","."));
+      if (!form.val || isNaN(v) || v <= 0) { onToast("Informe um valor válido.", "error"); return; }
+      onAddConsumo(clientId, form.dt, form.val); 
+      form.val = ""; form.dt = todayStr(); form._subs.forEach(fn => fn());
+    }
+  };
+
+  return <input type="text" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={handleKeyDown} placeholder="0,00" style={{...inpBase,width:110,textAlign:"right"}}/>; 
+}
+
 function InlineBtn({ clientId, onAddConsumo, onToast }) {
   const [val] = useFormField(clientId, "val");
   const handle = () => {
     const form = getForm(clientId); const v = parseFloat(String(form.val).replace(",","."));
     if (!form.val || isNaN(v) || v <= 0) { onToast("Informe um valor válido.", "error"); return; }
-    onAddConsumo(clientId, form.dt, form.val); // Sem descrição
+    onAddConsumo(clientId, form.dt, form.val); 
     form.val = ""; form.dt = todayStr(); form._subs.forEach(fn => fn());
   };
   return (
@@ -268,7 +294,7 @@ function ClientsTable({ clients, latestMethodByClient, onSelect, onAddConsumo, o
                   </div>
                 </td>
                 <td style={{padding:"8px 8px"}}><InlineDate clientId={client.id}/></td>
-                <td style={{padding:"8px 8px"}}><InlineValue clientId={client.id}/></td>
+                <td style={{padding:"8px 8px"}}><InlineValue clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
                 <td style={{padding:"8px 8px"}}><InlineBtn clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
                 <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}><Chip color="#15803D" bg="#DCFCE7">{BRL(total)}</Chip></td>
                 <td style={{padding:"12px 16px"}}><MethodChip method={latestMethod}/></td>
@@ -284,8 +310,17 @@ function ClientsTable({ clients, latestMethodByClient, onSelect, onAddConsumo, o
   );
 }
 
+/* ═══ ClientDetail ═══════════════════════════════════════════════════════ */
+
 function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onExportXLSX, onOpenEdit }) {
   const { client, faturas, total } = data;
+
+  const handleDeleteConsumo = (consumoId) => {
+    if (window.confirm("Tem certeza que deseja apagar este consumo?")) {
+      onDeleteConsumo(client.id, consumoId);
+    }
+  };
+
   return (
     <div>
       <Card style={{marginBottom:20,padding:22}}>
@@ -342,7 +377,7 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
                   <tr key={c.id} style={{borderTop:"1px solid #F3F4F6"}}>
                     <td style={{padding:"10px 16px",color:"#374151",whiteSpace:"nowrap"}}>{fmtD(c.date)}</td>
                     <td style={{padding:"10px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(c.value)}</td>
-                    <td style={{padding:"10px 16px",textAlign:"right"}}><button onClick={()=>onDeleteConsumo(client.id,c.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#EF4444",padding:4,borderRadius:6 }}><Trash2 size={13}/></button></td>
+                    <td style={{padding:"10px 16px",textAlign:"right"}}><button onClick={()=>handleDeleteConsumo(c.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#EF4444",padding:4,borderRadius:6 }}><Trash2 size={13}/></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -354,16 +389,35 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
   );
 }
 
+/* ═══ FaturasTab ═════════════════════════════════════════════════════════ */
+
 function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, onSelectClient, onSetStatus, onSetMethod, onExportXLSX, onExportBatch }) {
   const selStyle = { padding:"9px 12px",borderRadius:10,border:"1px solid #E5E7EB",fontSize:13,background:"#fff",fontFamily:"inherit",cursor:"pointer" };
+  
+  // Agrupar faturas hierarquicamente: Ano -> Mês -> Faturas
+  const groupedByYearAndMonth = useMemo(() => {
+    const grouped = {};
+    faturas.forEach(f => {
+      const [year, monthNum] = f.monthYear.split("-");
+      const monthName = MONTHS[parseInt(monthNum)-1];
+      if (!grouped[year]) grouped[year] = {};
+      if (!grouped[year][monthName]) grouped[year][monthName] = { list: [], total: 0 };
+      grouped[year][monthName].list.push(f);
+      grouped[year][monthName].total += f.total;
+    });
+    return grouped;
+  }, [faturas]);
+
   return (
     <div>
+      {/* Barra de Filtros e Total */}
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={fy} onChange={e=>setFy(e.target.value)} style={selStyle}><option value="all">Todos os anos</option>{years.map(y=><option key={y} value={y}>{y}</option>)}</select>
         <select value={fm} onChange={e=>setFm(e.target.value)} style={selStyle}><option value="all">Todos os meses</option>{MONTHS.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}</select>
         <select value={fs} onChange={e=>setFs(e.target.value)} style={selStyle}><option value="all">Todos os status</option>{Object.keys(STATUS_CFG).map(s=><option key={s} value={s}>{s}</option>)}</select>
       </div>
-      <div style={{ background:"#EEF2FF",borderRadius:14,padding:18,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12 }}>
+      
+      <div style={{ background:"#EEF2FF",borderRadius:14,padding:18,marginBottom:32,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12 }}>
         <div>
           <div style={{fontSize:11,fontWeight:700,color:"#4F46E5",marginBottom:4,letterSpacing:.5}}>TOTAL FILTRADO</div>
           <div style={{fontSize:26,fontWeight:900,color:"#4338CA"}}>{BRL(total)}</div>
@@ -371,25 +425,58 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
         </div>
         <Btn variant="success" onClick={onExportBatch} style={{padding:"10px 18px"}}><Download size={15}/> Exportar XLSX</Btn>
       </div>
-      {faturas.length===0 ? <div style={{border:"2px dashed #E5E7EB",borderRadius:16,padding:60,textAlign:"center",color:"#9CA3AF"}}>Nenhuma fatura no filtro selecionado</div> : (
-        <Card style={{padding:0,overflow:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-            <thead><tr style={{background:"#F9FAFB"}}>{["Mês/Ano","Cliente","Lanç.","Método","Total","Status",""].map(h=>(<th key={h} style={{ padding:"12px 16px",textAlign:"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5,whiteSpace:"nowrap" }}>{h}</th>))}</tr></thead>
-            <tbody>
-              {faturas.map(f=>(
-                <tr key={f.key} style={{borderTop:"1px solid #F3F4F6"}}>
-                  <td style={{padding:"12px 16px",color:"#374151",fontWeight:600,whiteSpace:"nowrap"}}>{mLabel(f.monthYear)}</td>
-                  <td style={{padding:"12px 16px"}}><span onClick={()=>onSelectClient(f.clientId)} style={{color:"#4F46E5",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>{f.clientName}</span></td>
-                  <td style={{padding:"12px 16px",color:"#6B7280"}}>{f.count}</td>
-                  <td style={{padding:"8px 16px"}}><MethodSel value={f.method} onChange={v=>onSetMethod(f.key,v)}/></td>
-                  <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(f.total)}</td>
-                  <td style={{padding:"12px 16px"}}><StatusSel value={f.status} onChange={v=>onSetStatus(f.key,v)}/></td>
-                  <td style={{padding:"12px 16px"}}><Btn variant="success" onClick={()=>onExportXLSX(f)} style={{padding:"4px 8px",fontSize:11}}>XLSX</Btn></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+
+      {faturas.length === 0 ? (
+        <div style={{border:"2px dashed #E5E7EB",borderRadius:16,padding:60,textAlign:"center",color:"#9CA3AF"}}>Nenhuma fatura encontrada com estes filtros</div>
+      ) : (
+        // Renderização Agrupada (Ano -> Mês -> Tabela)
+        Object.keys(groupedByYearAndMonth).sort((a,b)=>b.localeCompare(a)).map(year => (
+          <div key={year} style={{marginBottom: 40}}>
+            <h2 style={{fontSize: 22, fontWeight: 900, color: "#111", borderBottom: "2px solid #E5E7EB", paddingBottom: 8, marginBottom: 20}}>
+              Ano de {year}
+            </h2>
+            
+            {Object.keys(groupedByYearAndMonth[year]).map(month => {
+              const mData = groupedByYearAndMonth[year][month];
+              return (
+                <Card key={month} style={{padding:0, overflow:"hidden", marginBottom: 20, borderLeft: "4px solid #4F46E5"}}>
+                  <div style={{ padding:"14px 20px",background:"#FAFAFA",borderBottom:"1px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                    <div style={{fontSize:16,fontWeight:800,color:"#374151"}}>{month}</div>
+                    <div style={{fontSize:16,fontWeight:900,color:"#15803D"}}>{BRL(mData.total)}</div>
+                  </div>
+                  
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                    <thead>
+                      <tr style={{background:"#fff", borderBottom: "2px solid #F3F4F6"}}>
+                        {["Cliente","Lanç.","Método","Total","Status","Ação"].map((h, i)=>(
+                          <th key={h} style={{ padding:"12px 16px",textAlign: i===5?"center":"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5,whiteSpace:"nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mData.list.map(f=>(
+                        <tr key={f.key} style={{borderTop:"1px solid #F3F4F6"}}>
+                          <td style={{padding:"12px 16px"}}>
+                            <span onClick={()=>onSelectClient(f.clientId)} style={{color:"#4F46E5",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>
+                              {f.clientName}
+                            </span>
+                          </td>
+                          <td style={{padding:"12px 16px",color:"#6B7280"}}>{f.count}</td>
+                          <td style={{padding:"8px 16px"}}><MethodSel value={f.method} onChange={v=>onSetMethod(f.key,v)}/></td>
+                          <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(f.total)}</td>
+                          <td style={{padding:"12px 16px"}}><StatusSel value={f.status} onChange={v=>onSetStatus(f.key,v)}/></td>
+                          <td style={{padding:"12px 16px", textAlign:"center"}}>
+                            <Btn variant="success" onClick={()=>onExportXLSX(f)} style={{padding:"4px 8px",fontSize:11}}>XLSX</Btn>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
+              );
+            })}
+          </div>
+        ))
       )}
     </div>
   );
@@ -432,7 +519,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
   const [showModal, setShowModal] = useState(false);
   const [form,      setForm]      = useState({name:"",email:"",phone:"",method:"BOLETO"});
   
-  const [editingClient, setEditingClient] = useState(null); // Modal de Editar
+  const [editingClient, setEditingClient] = useState(null); 
   
   const [fy,        setFy]        = useState("all");
   const [fm,        setFm]        = useState("all");
@@ -502,7 +589,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
     const q = search.toLowerCase(); 
     return clients.filter(c => {
       const matchQ = c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
-      const isActive = c.active !== false; // Padrão é true
+      const isActive = c.active !== false;
       const matchStatus = (showActive && isActive) || (showInactive && !isActive);
       return matchQ && matchStatus;
     });
@@ -538,7 +625,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
       await fetchAPI(`/clientes/${editingClient.id}`, { method: 'DELETE' });
       setClients(p => p.filter(c => c.id !== editingClient.id));
       setEditingClient(null);
-      if (selId === editingClient.id) setSelId(null); // Sai da tela de detalhe se estava lá
+      if (selId === editingClient.id) setSelId(null);
       showToast("Cliente excluído com sucesso.");
     } catch (err) { showToast("Erro ao excluir", "error"); }
   };
@@ -546,7 +633,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
   const addConsumo = async (clientId, date, valStr) => {
     const value = parseFloat(String(valStr).replace(",","."));
     if(isNaN(value)||value<=0) return;
-    const novoConsumo = { id: uid(), date, value }; // Sem desc
+    const novoConsumo = { id: uid(), date, value };
     try {
       await fetchAPI(`/clientes/${clientId}/consumos`, { method: 'POST', body: JSON.stringify(novoConsumo) });
       setClients(p => p.map(c => c.id === clientId ? {...c, consumos: [...c.consumos, novoConsumo]} : c)); showToast("Consumo salvo.");
