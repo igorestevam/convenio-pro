@@ -342,12 +342,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
             </div>
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "space-between" }} className="header-actions">
-            <div>
-              <Lbl>PADRÃO DO CLIENTE</Lbl>
-              <select value={client.method} onChange={e => onUpdateMethod(client.id, e.target.value)} style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontWeight: 600, background: "#fff", cursor: "pointer", fontFamily: "inherit" }}>
-                <option value="BOLETO">BOLETO</option><option value="PIX">PIX</option>
-              </select>
-            </div>
             <div style={{ background: "linear-gradient(135deg,#4F46E5,#6D28D9)", borderRadius: 14, padding: "12px 22px", color: "#fff", textAlign: "center", flexShrink: 0 }}>
               <div style={{ fontSize: 10, fontWeight: 700, opacity: .8, letterSpacing: .8 }}>TOTAL CLIENTE</div><div style={{ fontSize: 22, fontWeight: 900, marginTop: 2 }}>{BRL(total)}</div>
             </div>
