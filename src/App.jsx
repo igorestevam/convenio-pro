@@ -205,7 +205,7 @@ function AuthScreen({ onLogin }) {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div style={{ width: 50, height: 50, borderRadius: 12, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={24} color="#fff" /></div>
         </div>
-        <h2 style={{ textAlign: "center", fontSize: 24, fontWeight: 900, marginBottom: 8 }}>Bucetinha</h2>
+        <h2 style={{ textAlign: "center", fontSize: 24, fontWeight: 900, marginBottom: 8 }}>ConvênioPro</h2>
         <p style={{ textAlign: "center", color: "#6B7280", fontSize: 14, marginBottom: 30 }}>{isLogin ? "Entre na sua conta da empresa" : "Crie uma nova conta de empresa"}</p>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {!isLogin && (<div><Lbl>NOME DA EMPRESA*</Lbl><Inp type="text" value={name} onChange={setName} placeholder="Ex: Padaria do João" /></div>)}
@@ -731,7 +731,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><Receipt size={18} color="#fff" /></div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Bucetinha</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>ConvênioPro</div>
             <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de consumo de clientes</div>
           </div>
         </div>
