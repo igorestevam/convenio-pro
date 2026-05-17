@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate', // Atualiza o app automaticamente quando você subir código novo
-      includeAssets: ['logo.png', 'logo.png'], // Os ícones que você colocou na pasta public
+      includeAssets: ['logo192x192', 'logo512x512'], // Os ícones que você colocou na pasta public
       manifest: {
         name: 'ConvênioPro',
         short_name: 'ConvênioPro',
@@ -17,12 +17,12 @@ export default defineConfig({
         display: 'standalone', // Faz abrir como um programa (sem a barra de endereço do Chrome)
         icons: [
           {
-            src: 'logo.png',
+            src: '/logo192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'logo.png',
+            src: '/logo512x512.png',
             sizes: '512x512',
             type: 'image/png'
           }
