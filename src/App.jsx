@@ -199,7 +199,7 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F4F3F0", padding: 16 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F4F3F0", padding: 16}}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
@@ -496,15 +496,37 @@ export default function App() {
   const handleLogin = (newToken, email, name) => {
     localStorage.setItem("conveniopro_token", newToken);
     localStorage.setItem("conveniopro_email", email);
-    if (name) localStorage.setItem("conveniopro_nome", name);
+    if(name) localStorage.setItem("conveniopro_nome", name);
     setToken(newToken); setEmpresaEmail(email); setEmpresaNome(name);
   };
+  
   const handleLogout = () => {
     localStorage.removeItem("conveniopro_token"); localStorage.removeItem("conveniopro_email"); localStorage.removeItem("conveniopro_nome");
     setToken(null); setEmpresaEmail(null); setEmpresaNome(null);
   };
-  if (!token) return <AuthScreen onLogin={handleLogin} />;
-  return <MainApp token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onLogout={handleLogout} />;
+
+  return (
+    <>
+      {/* ─── CSS Global Anti-Dark Mode do WebView2 ─── */}
+      <style>{`
+        :root {
+          color-scheme: light;
+        }
+        body {
+          color: #111827;
+        }
+        input, select, button, textarea {
+          color: #111827;
+        }
+      `}</style>
+
+      {!token ? (
+        <AuthScreen onLogin={handleLogin} />
+      ) : (
+        <MainApp token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onLogout={handleLogout} />
+      )}
+    </>
+  );
 }
 
 /* ═══ Main App (Apenas visível após login) ══════════════════════════════ */
