@@ -199,7 +199,7 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F4F3F0", padding: 16}}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F4F3F0", padding: 16, color: "#111827"}}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
