@@ -214,7 +214,7 @@ function AuthScreen({ onLogin }) {
           <Btn style={{ width: "100%", justifyContent: "center", marginTop: 10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
         </form>
         <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#6B7280" }}>
-          {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color: "#4F46E5", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>{isLogin ? "Registe-se aqui" : "Faça login"}</span>
+          {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color: "#4F46E5", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>{isLogin ? "Registre-se aqui" : "Faça login"}</span>
         </div>
       </Card>
     </div>
