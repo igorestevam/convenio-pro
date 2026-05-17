@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 
@@ -9,8 +10,8 @@ app.use(cors());
 app.use(express.json());
 
 // 1. CONEXÃO COM O MONGODB
-mongoose.connect('mongodb+srv://igor_estevam:1910@conveniocluster.zuy19bo.mongodb.net/dbConvenio?appName=ConvenioCluster')
-  .then(() => console.log('Conectado ao MongoDB com sucesso!'))
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Conectado ao banco com sucesso!'))
   .catch(err => console.error('Erro ao conectar no banco:', err));
 
 // 2. DEFININDO O "MOLDE" DOS DADOS (SCHEMA)
