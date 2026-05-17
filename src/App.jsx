@@ -69,7 +69,7 @@ function Btn({ children, onClick, variant="primary", disabled=false, style={} })
     danger:    { background:"#FEE2E2", color:"#DC2626", border:"none" },
   };
   return (
-    <button onClick={disabled?undefined:onClick} style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px", borderRadius:10,fontSize:13,fontWeight:700,cursor:disabled?"not-allowed":"pointer", opacity:disabled?.5:1,transition:"opacity .15s",fontFamily:"inherit", ...themes[variant],...style }}>
+    <button onClick={disabled?undefined:onClick} style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 16px", borderRadius:10,fontSize:13,fontWeight:700,cursor:disabled?"not-allowed":"pointer", opacity:disabled?.5:1,transition:"opacity .15s",fontFamily:"inherit", ...themes[variant],...style }}>
       {children}
     </button>
   );
@@ -96,12 +96,12 @@ function Toast({ msg, type, onDone }) {
   );
 }
 
-/* ═══ Modais (Novo Cliente & Editar Cliente) ═════════════════════════════ */
+/* ═══ Modais ═════════════════════════════════════════════════════════════ */
 
 function NewClientModal({ data, onChange, onConfirm, onClose }) {
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(10,10,20,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(6px)" }}>
-      <Card style={{width:420,maxWidth:"92vw",padding:28,animation:"toastIn .2s ease"}}>
+    <div style={{ position:"fixed",inset:0,background:"rgba(10,10,20,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(6px)", padding: 16 }}>
+      <Card style={{width:"100%",maxWidth:420,padding:28,animation:"toastIn .2s ease",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
           <div style={{fontSize:18,fontWeight:900,color:"#111"}}>Novo Cliente</div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:4}}><X size={20}/></button>
@@ -119,9 +119,9 @@ function NewClientModal({ data, onChange, onConfirm, onClose }) {
             ))}
           </div>
         </div>
-        <div style={{display:"flex",gap:10,marginTop:18}}>
-          <Btn onClick={onClose} variant="secondary" style={{flex:1,justifyContent:"center"}}>Cancelar</Btn>
-          <Btn onClick={onConfirm} disabled={!data.name.trim()} style={{flex:2,justifyContent:"center"}}>Cadastrar</Btn>
+        <div style={{display:"flex",gap:10,marginTop:18,flexWrap:"wrap"}}>
+          <Btn onClick={onClose} variant="secondary" style={{flex:1}}>Cancelar</Btn>
+          <Btn onClick={onConfirm} disabled={!data.name.trim()} style={{flex:2}}>Cadastrar</Btn>
         </div>
       </Card>
     </div>
@@ -139,8 +139,8 @@ function EditClientModal({ client, onUpdate, onDelete, onClose }) {
   };
 
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(10,10,20,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(6px)" }}>
-      <Card style={{width:420,maxWidth:"92vw",padding:28,animation:"toastIn .2s ease"}}>
+    <div style={{ position:"fixed",inset:0,background:"rgba(10,10,20,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(6px)", padding: 16 }}>
+      <Card style={{width:"100%",maxWidth:420,padding:28,animation:"toastIn .2s ease",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
           <div style={{fontSize:18,fontWeight:900,color:"#111"}}>Editar Cliente</div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:4}}><X size={20}/></button>
@@ -158,15 +158,16 @@ function EditClientModal({ client, onUpdate, onDelete, onClose }) {
           </div>
         </div>
 
-        <div style={{display:"flex",gap:10, alignItems:"center"}}>
+        <div style={{display:"flex",gap:10, alignItems:"center", flexWrap:"wrap"}}>
           {canDelete ? (
             <button onClick={handleDeleteClick} style={{ background:"none", border:"none", color:"#EF4444", cursor:"pointer", padding:8, display:"flex", alignItems:"center", gap:4, fontWeight:700, fontSize:12, fontFamily:"inherit" }} title="Excluir cliente em definitivo"><Trash2 size={16}/> Excluir</button>
           ) : (
              <span style={{ fontSize:10, color:"#9CA3AF", maxWidth: 120, lineHeight: 1.2 }}>Exclusão bloqueada (possui consumos)</span>
           )}
-          <div style={{flex:1}}></div>
-          <Btn onClick={onClose} variant="secondary">Cancelar</Btn>
-          <Btn onClick={()=>onUpdate(form)} disabled={!form.name.trim()}>Salvar</Btn>
+          <div style={{flex:1, minWidth: "100%", display: "flex", gap: 10, marginTop: 10}}>
+            <Btn onClick={onClose} variant="secondary" style={{flex:1}}>Cancelar</Btn>
+            <Btn onClick={()=>onUpdate(form)} disabled={!form.name.trim()} style={{flex:1}}>Salvar</Btn>
+          </div>
         </div>
       </Card>
     </div>
@@ -198,9 +199,9 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0" }}>
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0", padding: 16 }}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
-      <Card style={{ width: 400, padding: 40 }}>
+      <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
         <div style={{ display:"flex", justifyContent:"center", marginBottom: 20 }}>
           <div style={{ width:50,height:50,borderRadius:12, background:"linear-gradient(135deg,#4F46E5,#6D28D9)", display:"flex",alignItems:"center",justifyContent:"center" }}><Lock size={24} color="#fff"/></div>
         </div>
@@ -238,12 +239,11 @@ const inpBase = { boxSizing:"border-box", padding:"7px 10px", borderRadius:8, bo
 
 function InlineDate({ clientId }) { 
   const [dt, setDt] = useFormField(clientId, "dt"); 
-  return <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{...inpBase,width:145}}/>; 
+  return <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{...inpBase,width:140}}/>; 
 }
 
 function InlineValue({ clientId, onAddConsumo, onToast }) { 
   const [val, setVal] = useFormField(clientId, "val"); 
-
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       const form = getForm(clientId); 
@@ -253,8 +253,7 @@ function InlineValue({ clientId, onAddConsumo, onToast }) {
       form.val = ""; form.dt = todayStr(); form._subs.forEach(fn => fn());
     }
   };
-
-  return <input type="text" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={handleKeyDown} placeholder="0,00" style={{...inpBase,width:110,textAlign:"right"}}/>; 
+  return <input type="text" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={handleKeyDown} placeholder="0,00" style={{...inpBase,width:100,textAlign:"right"}}/>; 
 }
 
 function InlineBtn({ clientId, onAddConsumo, onToast }) {
@@ -274,38 +273,40 @@ function ClientsTable({ clients, latestMethodByClient, onSelect, onAddConsumo, o
   const thStyle = { padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.6,whiteSpace:"nowrap",borderBottom:"2px solid #F3F4F6" };
   if (clients.length === 0) return <div style={{textAlign:"center",padding:60,color:"#9CA3AF"}}><Users size={40} style={{marginBottom:12,opacity:.25}}/><div>Nenhum cliente na lista</div></div>;
   return (
-    <Card style={{padding:0,overflow:"hidden"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-        <thead>
-          <tr style={{background:"#F9FAFB"}}>
-            <th style={{...thStyle,paddingLeft:20}}>CLIENTE</th><th style={thStyle}>DATA</th><th style={thStyle}>VALOR (R$)</th><th style={thStyle}></th><th style={thStyle}>TOTAL ACUM.</th><th style={thStyle}>ÚLT. MÉTODO</th><th style={{...thStyle,textAlign:"center"}}>DETALHE</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map((client, idx) => {
-            const total = client.consumos.reduce((s,c)=>s+c.value,0);
-            const latestMethod = latestMethodByClient[client.id] || client.method;
-            return (
-              <tr key={client.id} style={{ background: idx%2===0 ? "#fff" : "#FAFAFA", borderTop: idx===0 ? "none" : "1px solid #F3F4F6", opacity: client.active===false? 0.5 : 1 }}>
-                <td style={{padding:"12px 16px 12px 20px",minWidth:180}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{ width:32,height:32,borderRadius:9,flexShrink:0,background:"linear-gradient(135deg,#4F46E5,#6D28D9)",display:"flex",alignItems:"center",justifyContent:"center" }}><User size={14} color="#fff"/></div>
-                    <div><div style={{fontWeight:800,color:"#111",fontSize:13}}>{client.name} {client.active===false && <span style={{fontSize:10,color:"#DC2626",fontWeight:700,marginLeft:4}}>(Inativo)</span>}</div>{client.phone && <div style={{fontSize:11,color:"#9CA3AF",marginTop:1}}>{client.phone}</div>}</div>
-                  </div>
-                </td>
-                <td style={{padding:"8px 8px"}}><InlineDate clientId={client.id}/></td>
-                <td style={{padding:"8px 8px"}}><InlineValue clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
-                <td style={{padding:"8px 8px"}}><InlineBtn clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
-                <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}><Chip color="#15803D" bg="#DCFCE7">{BRL(total)}</Chip></td>
-                <td style={{padding:"12px 16px"}}><MethodChip method={latestMethod}/></td>
-                <td style={{padding:"12px 16px",textAlign:"center"}}>
-                  <button onClick={()=>onSelect(client.id)} style={{ display:"inline-flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,border:"1px solid #E5E7EB",background:"#fff",color:"#4F46E5",cursor:"pointer",fontFamily:"inherit" }}>Ver <ChevronRight size={12}/></button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <Card style={{padding:0}}>
+      <div className="table-responsive">
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead>
+            <tr style={{background:"#F9FAFB"}}>
+              <th style={{...thStyle,paddingLeft:20}}>CLIENTE</th><th style={thStyle}>DATA</th><th style={thStyle}>VALOR (R$)</th><th style={thStyle}></th><th style={thStyle}>TOTAL ACUM.</th><th style={thStyle}>ÚLT. MÉTODO</th><th style={{...thStyle,textAlign:"center"}}>DETALHE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map((client, idx) => {
+              const total = client.consumos.reduce((s,c)=>s+c.value,0);
+              const latestMethod = latestMethodByClient[client.id] || client.method;
+              return (
+                <tr key={client.id} style={{ background: idx%2===0 ? "#fff" : "#FAFAFA", borderTop: idx===0 ? "none" : "1px solid #F3F4F6", opacity: client.active===false? 0.5 : 1 }}>
+                  <td style={{padding:"12px 16px 12px 20px",minWidth:180}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{ width:32,height:32,borderRadius:9,flexShrink:0,background:"linear-gradient(135deg,#4F46E5,#6D28D9)",display:"flex",alignItems:"center",justifyContent:"center" }}><User size={14} color="#fff"/></div>
+                      <div><div style={{fontWeight:800,color:"#111",fontSize:13}}>{client.name} {client.active===false && <span style={{fontSize:10,color:"#DC2626",fontWeight:700,marginLeft:4}}>(Inativo)</span>}</div>{client.phone && <div style={{fontSize:11,color:"#9CA3AF",marginTop:1}}>{client.phone}</div>}</div>
+                    </div>
+                  </td>
+                  <td style={{padding:"8px 8px"}}><InlineDate clientId={client.id}/></td>
+                  <td style={{padding:"8px 8px"}}><InlineValue clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
+                  <td style={{padding:"8px 8px"}}><InlineBtn clientId={client.id} onAddConsumo={onAddConsumo} onToast={onToast}/></td>
+                  <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}><Chip color="#15803D" bg="#DCFCE7">{BRL(total)}</Chip></td>
+                  <td style={{padding:"12px 16px"}}><MethodChip method={latestMethod}/></td>
+                  <td style={{padding:"12px 16px",textAlign:"center"}}>
+                    <button onClick={()=>onSelect(client.id)} style={{ display:"inline-flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,border:"1px solid #E5E7EB",background:"#fff",color:"#4F46E5",cursor:"pointer",fontFamily:"inherit" }}>Ver <ChevronRight size={12}/></button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
@@ -316,7 +317,7 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
   const { client, faturas, total } = data;
 
   const handleDeleteConsumo = (consumoId) => {
-    if (window.confirm("Tem certeza que deseja apagar este consumo?")) {
+    if (window.confirm("Tem certeza que deseja apagar este consumo? Esta ação não pode ser desfeita.")) {
       onDeleteConsumo(client.id, consumoId);
     }
   };
@@ -325,10 +326,10 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
     <div>
       <Card style={{marginBottom:20,padding:22}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
-          <div style={{display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{display:"flex",gap:14,alignItems:"center", flexWrap:"wrap"}}>
             <div style={{ width:52,height:52,borderRadius:14,flexShrink:0,background:"linear-gradient(135deg,#4F46E5,#6D28D9)",display:"flex",alignItems:"center",justifyContent:"center" }}><User size={24} color="#fff"/></div>
             <div>
-              <div style={{display:"flex", alignItems:"center", gap:10}}>
+              <div style={{display:"flex", alignItems:"center", gap:10, flexWrap:"wrap"}}>
                 <div style={{fontSize:20,fontWeight:900,color:"#111"}}>{client.name}</div>
                 {client.active===false && <Chip color="#DC2626" bg="#FEE2E2">Inativo</Chip>}
                 <button onClick={onOpenEdit} style={{display:"flex",alignItems:"center",gap:4,background:"#F3F4F6",border:"none",padding:"4px 10px",borderRadius:8,fontSize:11,fontWeight:700,color:"#4B5563",cursor:"pointer",fontFamily:"inherit"}}><Edit size={12}/> Editar</button>
@@ -339,7 +340,7 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
               </div>
             </div>
           </div>
-          <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap", width:"100%", justifyContent:"space-between"}} className="header-actions">
             <div>
               <Lbl>PADRÃO DO CLIENTE</Lbl>
               <select value={client.method} onChange={e=>onUpdateMethod(client.id, e.target.value)} style={{ padding:"8px 12px",borderRadius:10,border:"1px solid #E5E7EB",fontSize:13,fontWeight:600,background:"#fff",cursor:"pointer",fontFamily:"inherit" }}>
@@ -353,13 +354,12 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
         </div>
       </Card>
       
-      {/* Tabela de faturas agora ocupa a tela toda, sem o form de registro */}
       <div>
         <div style={{fontSize:14,fontWeight:800,color:"#111",marginBottom:14}}>Faturas e lançamentos</div>
         {faturas.length===0 ? (
           <div style={{border:"2px dashed #E5E7EB",borderRadius:16,padding:40,textAlign:"center",color:"#9CA3AF"}}><Receipt size={32} style={{opacity:.25,marginBottom:10}}/><div>Nenhum lançamento registrado</div></div>
         ) : faturas.map(f=>(
-          <Card key={f.key} style={{marginBottom:14,padding:0,overflow:"hidden"}}>
+          <Card key={f.key} style={{marginBottom:14,padding:0}}>
             <div style={{ padding:"14px 18px",background:"#FAFAFA",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8 }}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
                 <span style={{fontSize:15,fontWeight:800,color:"#111"}}>{mLabel(f.monthYear)}</span>
@@ -370,18 +370,20 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onUpdateMethod, onEx
                 <StatusSel value={f.status} onChange={v=>onSetStatus(f.key,v)}/><Btn variant="success" onClick={()=>onExportXLSX(f)} style={{padding:"4px 10px",fontSize:11}}>XLSX</Btn>
               </div>
             </div>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-              <thead><tr style={{background:"#F9FAFB"}}>{["Data","Valor",""].map(h=>(<th key={h} style={{padding:"8px 16px",textAlign:"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5}}>{h}</th>))}</tr></thead>
-              <tbody>
-                {[...f.consumos].sort((a,b)=>a.date.localeCompare(b.date)).map(c=>(
-                  <tr key={c.id} style={{borderTop:"1px solid #F3F4F6"}}>
-                    <td style={{padding:"10px 16px",color:"#374151",whiteSpace:"nowrap"}}>{fmtD(c.date)}</td>
-                    <td style={{padding:"10px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(c.value)}</td>
-                    <td style={{padding:"10px 16px",textAlign:"right"}}><button onClick={()=>handleDeleteConsumo(c.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#EF4444",padding:4,borderRadius:6 }}><Trash2 size={13}/></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-responsive">
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                <thead><tr style={{background:"#F9FAFB"}}>{["Data","Valor",""].map(h=>(<th key={h} style={{padding:"8px 16px",textAlign:"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5}}>{h}</th>))}</tr></thead>
+                <tbody>
+                  {[...f.consumos].sort((a,b)=>a.date.localeCompare(b.date)).map(c=>(
+                    <tr key={c.id} style={{borderTop:"1px solid #F3F4F6"}}>
+                      <td style={{padding:"10px 16px",color:"#374151",whiteSpace:"nowrap"}}>{fmtD(c.date)}</td>
+                      <td style={{padding:"10px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(c.value)}</td>
+                      <td style={{padding:"10px 16px",textAlign:"right"}}><button onClick={()=>handleDeleteConsumo(c.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#EF4444",padding:4,borderRadius:6 }}><Trash2 size={13}/></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         ))}
       </div>
@@ -439,39 +441,41 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
             {Object.keys(groupedByYearAndMonth[year]).map(month => {
               const mData = groupedByYearAndMonth[year][month];
               return (
-                <Card key={month} style={{padding:0, overflow:"hidden", marginBottom: 20, borderLeft: "4px solid #4F46E5"}}>
+                <Card key={month} style={{padding:0, marginBottom: 20, borderLeft: "4px solid #4F46E5"}}>
                   <div style={{ padding:"14px 20px",background:"#FAFAFA",borderBottom:"1px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <div style={{fontSize:16,fontWeight:800,color:"#374151"}}>{month}</div>
                     <div style={{fontSize:16,fontWeight:900,color:"#15803D"}}>{BRL(mData.total)}</div>
                   </div>
                   
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                    <thead>
-                      <tr style={{background:"#fff", borderBottom: "2px solid #F3F4F6"}}>
-                        {["Cliente","Lanç.","Método","Total","Status","Ação"].map((h, i)=>(
-                          <th key={h} style={{ padding:"12px 16px",textAlign: i===5?"center":"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5,whiteSpace:"nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mData.list.map(f=>(
-                        <tr key={f.key} style={{borderTop:"1px solid #F3F4F6"}}>
-                          <td style={{padding:"12px 16px"}}>
-                            <span onClick={()=>onSelectClient(f.clientId)} style={{color:"#4F46E5",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>
-                              {f.clientName}
-                            </span>
-                          </td>
-                          <td style={{padding:"12px 16px",color:"#6B7280"}}>{f.count}</td>
-                          <td style={{padding:"8px 16px"}}><MethodSel value={f.method} onChange={v=>onSetMethod(f.key,v)}/></td>
-                          <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(f.total)}</td>
-                          <td style={{padding:"12px 16px"}}><StatusSel value={f.status} onChange={v=>onSetStatus(f.key,v)}/></td>
-                          <td style={{padding:"12px 16px", textAlign:"center"}}>
-                            <Btn variant="success" onClick={()=>onExportXLSX(f)} style={{padding:"4px 8px",fontSize:11}}>XLSX</Btn>
-                          </td>
+                  <div className="table-responsive">
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                      <thead>
+                        <tr style={{background:"#fff", borderBottom: "2px solid #F3F4F6"}}>
+                          {["Cliente","Lanç.","Método","Total","Status","Ação"].map((h, i)=>(
+                            <th key={h} style={{ padding:"12px 16px",textAlign: i===5?"center":"left",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:.5,whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {mData.list.map(f=>(
+                          <tr key={f.key} style={{borderTop:"1px solid #F3F4F6"}}>
+                            <td style={{padding:"12px 16px"}}>
+                              <span onClick={()=>onSelectClient(f.clientId)} style={{color:"#4F46E5",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>
+                                {f.clientName}
+                              </span>
+                            </td>
+                            <td style={{padding:"12px 16px",color:"#6B7280"}}>{f.count}</td>
+                            <td style={{padding:"8px 16px"}}><MethodSel value={f.method} onChange={v=>onSetMethod(f.key,v)}/></td>
+                            <td style={{padding:"12px 16px",fontWeight:800,color:"#111",whiteSpace:"nowrap"}}>{BRL(f.total)}</td>
+                            <td style={{padding:"12px 16px"}}><StatusSel value={f.status} onChange={v=>onSetStatus(f.key,v)}/></td>
+                            <td style={{padding:"12px 16px", textAlign:"center"}}>
+                              <Btn variant="success" onClick={()=>onExportXLSX(f)} style={{padding:"4px 8px",fontSize:11}}>XLSX</Btn>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </Card>
               );
             })}
@@ -667,7 +671,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
   const exportXLSX = fatura => {
     try {
       const wb = XLSX.utils.book_new();
-      const rows = [ ["Cliente", fatura.clientName], ["E-mail", fatura.clientEmail], ["Telefone", fatura.clientPhone], ["Mês/Ano", mLabel(fatura.monthYear)], ["Método", fatura.method], ["Status", fatura.status], ["Total", fatura.total], [], ["#","Data","Valor (R$)"] ];
+      const rows = [ ["Cliente", fatura.clientName], ["E-mail", fatura.clientEmail], ["Telefone", fatura.clientPhone], ["Mês/Ano", mLabel(fatura.monthYear)], ["Método", fatura.method], ["Status", fatura.status], ["Total", fatura.total], [], ["#","Data", "Valor (R$)"] ];
       [...fatura.consumos].sort((a,b)=>a.date.localeCompare(b.date)).forEach((c,i)=>{ rows.push([i+1, fmtD(c.date), c.value]); });
       rows.push(["","TOTAL", fatura.total]);
       const ws = XLSX.utils.aoa_to_sheet(rows); XLSX.utils.book_append_sheet(wb,ws,"Fatura");
@@ -695,11 +699,35 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
         select { font-family: inherit; } button { font-family: inherit; } input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+        
+        /* Classes Responsivas */
+        .app-header {
+          position: sticky; top: 0; z-index: 100;
+          background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+          border-bottom: 1px solid #EBEBEB; padding: 12px 24px;
+          display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        }
+        @media (max-width: 600px) {
+          .app-header { flex-direction: column; align-items: flex-start; padding: 16px; }
+          .header-actions { width: 100%; justify-content: space-between; margin-top: 8px; }
+        }
+
+        .summary-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+        @media (min-width: 768px) { .summary-grid { grid-template-columns: 2fr 1fr 1fr; } }
+
+        .detail-layout { display: grid; gap: 20px; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .detail-layout { grid-template-columns: 300px 1fr; align-items: start; } }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-responsive table { min-width: 700px; } 
+
+        .search-bar-container { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+        .search-input-wrapper { position: relative; flex: 1; min-width: 250px; }
       `}</style>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
 
       {/* ─── Header ─── */}
-      <header style={{ position:"sticky",top:0,zIndex:100,background:"rgba(255,255,255,.92)",backdropFilter:"blur(14px)",borderBottom:"1px solid #EBEBEB",padding:"12px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12 }}>
+      <header className="app-header">
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{ width:36,height:36,borderRadius:10,flexShrink:0,background:"linear-gradient(135deg,#4F46E5,#6D28D9)",display:"flex",alignItems:"center",justifyContent:"center" }}><Receipt size={18} color="#fff"/></div>
           <div>
@@ -707,7 +735,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
             <div style={{fontSize:11,color:"#9CA3AF",fontWeight:500}}>Controle de consumo de clientes</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <div className="header-actions" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           {selId ? (
             <Btn onClick={()=>setSelId(null)} variant="secondary"><ArrowLeft size={15}/> Voltar</Btn>
           ) : (
@@ -724,7 +752,7 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
       </header>
 
       {/* ─── Summary cards ─── */}
-      <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:16,padding:"20px 24px 0",maxWidth:1400,margin:"0 auto" }}>
+      <div className="summary-grid" style={{ padding:"20px 24px 0",maxWidth:1400,margin:"0 auto" }}>
         <Card style={{background:"linear-gradient(135deg,#4F46E5,#6D28D9)",color:"#fff",padding:22}}><div style={{fontSize:11,fontWeight:700,opacity:.75,letterSpacing:.7,marginBottom:8}}>TOTAL GERAL DE CONSUMO</div><div style={{fontSize:30,fontWeight:900}}>{BRL(totalGeral)}</div></Card>
         <Card style={{padding:22}}><div style={{fontSize:11,fontWeight:700,color:"#6B7280",letterSpacing:.7,marginBottom:8}}>CLIENTES ATIVOS</div><div style={{fontSize:28,fontWeight:900,color:"#111"}}>{clients.filter(c=>c.active!==false).length}</div><Users size={16} color="#4F46E5" style={{marginTop:6}}/></Card>
         <Card style={{padding:22}}><div style={{fontSize:11,fontWeight:700,color:"#6B7280",letterSpacing:.7,marginBottom:8}}>TICKET MÉDIO</div><div style={{fontSize:22,fontWeight:900,color:"#111"}}>{BRL(ticketMedio)}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>{allConsumos.length} lançamentos</div></Card>
@@ -743,8 +771,8 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
             </div>
             {tab==="clientes" ? (
               <div>
-                <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:18}}>
-                  <div style={{position:"relative", flex: 1, maxWidth: 400}}>
+                <div className="search-bar-container">
+                  <div className="search-input-wrapper">
                     <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#9CA3AF"}}/>
                     <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por razão social, e-mail..." style={{ width:"100%",padding:"11px 12px 11px 36px",borderRadius:12,border:"1px solid #E5E7EB",fontSize:14,background:"#fff",fontFamily:"inherit",outline:"none" }}/>
                   </div>
