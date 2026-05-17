@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Users, Plus, Upload, Download, Search, Trash2, ArrowLeft,
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
-  Mail, Phone, Receipt, User, X,
+  Mail, Phone, Receipt, User, X, ChevronRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -214,49 +214,302 @@ function NewClientModal({ data, onChange, onConfirm, onClose }) {
   );
 }
 
-/* ═══ ClientCard ═════════════════════════════════════════════════════════ */
+/* ═══ ClientsTable — lista com lançamento inline ══════════════════════════ */
 
-function ClientCard({ client, onSelect }) {
-  const [hov, setHov] = useState(false);
-  const total = client.consumos.reduce((s,c)=>s+c.value,0);
+function ClientRowForm({ clientId, onAddConsumo, onToast }) {
+  const [val,  setVal]  = useState("");
+  const [desc, setDesc] = useState("");
+  const [dt,   setDt]   = useState(todayStr());
+
+  const handle = () => {
+    const v = parseFloat(String(val).replace(",","."));
+    if (!val || isNaN(v) || v <= 0) {
+      onToast("Informe um valor válido.", "error");
+      return;
+    }
+    onAddConsumo(clientId, dt, val, desc || "Consumo");
+    setVal(""); setDesc(""); setDt(todayStr());
+    onToast("Consumo lançado!");
+  };
+
+  const inputBase = {
+    boxSizing:"border-box", padding:"7px 10px", borderRadius:8,
+    border:"1px solid #E5E7EB", fontSize:13, background:"#FAFAFA",
+    outline:"none", fontFamily:"inherit", width:"100%",
+  };
+
   return (
-    <div
-      onClick={()=>onSelect(client.id)}
-      onMouseEnter={()=>setHov(true)}
-      onMouseLeave={()=>setHov(false)}
+    <tr style={{background:"#F9FAFB", borderTop:"none"}}>
+      {/* empty name cell */}
+      <td style={{padding:"8px 16px 8px 20px"}}/>
+      {/* date */}
+      <td style={{padding:"8px 8px"}}>
+        <input
+          type="date" value={dt} onChange={e=>setDt(e.target.value)}
+          style={{...inputBase, width:150}}
+        />
+      </td>
+      {/* description */}
+      <td style={{padding:"8px 8px"}}>
+        <input
+          type="text" value={desc} onChange={e=>setDesc(e.target.value)}
+          placeholder="Descrição (opcional)"
+          style={{...inputBase, minWidth:160}}
+        />
+      </td>
+      {/* value */}
+      <td style={{padding:"8px 8px"}}>
+        <input
+          type="text" value={val} onChange={e=>setVal(e.target.value)}
+          placeholder="0,00"
+          onKeyDown={e=>e.key==="Enter"&&handle()}
+          style={{...inputBase, width:110, textAlign:"right"}}
+        />
+      </td>
+      {/* add button + empty cols */}
+      <td style={{padding:"8px 8px"}}>
+        <button
+          onClick={handle}
+          disabled={!val}
+          title="Lançar consumo"
+          style={{
+            display:"inline-flex", alignItems:"center", gap:5,
+            padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:700,
+            background: val ? "linear-gradient(135deg,#4F46E5,#6D28D9)" : "#E5E7EB",
+            color: val ? "#fff" : "#9CA3AF",
+            border:"none", cursor: val ? "pointer" : "not-allowed",
+            fontFamily:"inherit", whiteSpace:"nowrap",
+          }}
+        >
+          <Plus size={13}/> Lançar
+        </button>
+      </td>
+      <td colSpan={2}/>
+    </tr>
+  );
+}
+
+function ClientsTable({ clients, onSelect, onAddConsumo, onToast }) {
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggle = (id) => setExpandedId(prev => prev === id ? null : id);
+
+  const thStyle = {
+    padding:"11px 16px", textAlign:"left",
+    fontSize:10, fontWeight:700, color:"#9CA3AF", letterSpacing:.6,
+    whiteSpace:"nowrap", borderBottom:"2px solid #F3F4F6",
+  };
+
+  if (clients.length === 0) {
+    return (
+      <div style={{textAlign:"center",padding:60,color:"#9CA3AF"}}>
+        <Users size={40} style={{marginBottom:12,opacity:.25}}/>
+        <div>Nenhum cliente encontrado</div>
+      </div>
+    );
+  }
+
+  return (
+    <Card style={{padding:0, overflow:"hidden"}}>
+      <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
+        <thead>
+          <tr style={{background:"#F9FAFB"}}>
+            <th style={{...thStyle, paddingLeft:20}}>CLIENTE</th>
+            <th style={thStyle}>DATA</th>
+            <th style={thStyle}>DESCRIÇÃO</th>
+            <th style={thStyle}>VALOR (R$)</th>
+            <th style={thStyle}></th>
+            <th style={thStyle}>TOTAL ACUM.</th>
+            <th style={thStyle}>MÉTODO</th>
+            <th style={{...thStyle, textAlign:"center"}}>DETALHE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client, idx) => {
+            const total = client.consumos.reduce((s,c)=>s+c.value,0);
+            const isExpanded = expandedId === client.id;
+            const isEven = idx % 2 === 0;
+
+            return [
+              /* ── Main row ── */
+              <tr
+                key={client.id}
+                style={{
+                  background: isExpanded ? "#F5F3FF" : isEven ? "#fff" : "#FAFAFA",
+                  borderTop: idx === 0 ? "none" : "1px solid #F3F4F6",
+                  transition:"background .15s",
+                }}
+              >
+                {/* Name */}
+                <td style={{padding:"12px 16px 12px 20px", minWidth:180}}>
+                  <div style={{display:"flex", alignItems:"center", gap:10}}>
+                    <div style={{
+                      width:32, height:32, borderRadius:9, flexShrink:0,
+                      background:"linear-gradient(135deg,#4F46E5,#6D28D9)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}>
+                      <User size={14} color="#fff"/>
+                    </div>
+                    <div>
+                      <div style={{fontWeight:800, color:"#111", fontSize:13}}>{client.name}</div>
+                      {client.phone && (
+                        <div style={{fontSize:11, color:"#9CA3AF", marginTop:1}}>{client.phone}</div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+
+                {/* Inline form cells — date, desc, value, button */}
+                {/* DATE */}
+                <td style={{padding:"8px 8px"}}>
+                  <InlineDate clientId={client.id} expandedId={expandedId} setExpandedId={setExpandedId}/>
+                </td>
+                {/* DESC */}
+                <td style={{padding:"8px 8px"}}>
+                  <InlineDesc clientId={client.id} expandedId={expandedId}/>
+                </td>
+                {/* VALUE */}
+                <td style={{padding:"8px 8px"}}>
+                  <InlineValue clientId={client.id} expandedId={expandedId}/>
+                </td>
+                {/* BUTTON */}
+                <td style={{padding:"8px 8px"}}>
+                  <InlineBtn
+                    clientId={client.id}
+                    onAddConsumo={onAddConsumo}
+                    onToast={onToast}
+                  />
+                </td>
+
+                {/* Total */}
+                <td style={{padding:"12px 16px", fontWeight:800, color:"#111", whiteSpace:"nowrap"}}>
+                  <Chip color="#15803D" bg="#DCFCE7">{BRL(total)}</Chip>
+                </td>
+
+                {/* Method */}
+                <td style={{padding:"12px 16px"}}>
+                  <MethodChip method={client.method}/>
+                </td>
+
+                {/* Detail link */}
+                <td style={{padding:"12px 16px", textAlign:"center"}}>
+                  <button
+                    onClick={()=>onSelect(client.id)}
+                    title="Ver detalhes"
+                    style={{
+                      display:"inline-flex", alignItems:"center", gap:4,
+                      padding:"5px 12px", borderRadius:8, fontSize:11,
+                      fontWeight:700, border:"1px solid #E5E7EB",
+                      background:"#fff", color:"#4F46E5", cursor:"pointer",
+                      fontFamily:"inherit",
+                    }}
+                  >
+                    Ver Cliente <ChevronRight size={12}/>
+                  </button>
+                </td>
+              </tr>,
+            ];
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+/* ─── Each inline cell is a tiny self-contained controlled element ─── */
+/* We store per-client form state in a shared registry via a custom hook */
+
+// Simple global form state map (keyed by clientId)
+const _formState = {};
+function getForm(id) {
+  if (!_formState[id]) _formState[id] = { val:"", desc:"", dt:todayStr(), _subs:[] };
+  return _formState[id];
+}
+
+function useFormField(clientId, field) {
+  const [value, setValue] = useState(() => getForm(clientId)[field]);
+  useEffect(() => {
+    const form = getForm(clientId);
+    const idx = form._subs.push(() => setValue(form[field])) - 1;
+    return () => form._subs.splice(idx, 1);
+  }, [clientId, field]);
+  const set = (v) => {
+    const form = getForm(clientId);
+    form[field] = v;
+    form._subs.forEach(fn => fn());
+  };
+  return [value, set];
+}
+
+const inputBase = {
+  boxSizing:"border-box", padding:"7px 10px", borderRadius:8,
+  border:"1px solid #E5E7EB", fontSize:13, background:"#FAFAFA",
+  outline:"none", fontFamily:"inherit",
+};
+
+function InlineDate({ clientId }) {
+  const [dt, setDt] = useFormField(clientId, "dt");
+  return (
+    <input
+      type="date" value={dt} onChange={e=>setDt(e.target.value)}
+      style={{...inputBase, width:145}}
+    />
+  );
+}
+
+function InlineDesc({ clientId }) {
+  const [desc, setDesc] = useFormField(clientId, "desc");
+  return (
+    <input
+      type="text" value={desc} onChange={e=>setDesc(e.target.value)}
+      placeholder="Descrição (opc.)"
+      style={{...inputBase, minWidth:150, maxWidth:220, width:"100%"}}
+    />
+  );
+}
+
+function InlineValue({ clientId }) {
+  const [val, setVal] = useFormField(clientId, "val");
+  return (
+    <input
+      type="text" value={val} onChange={e=>setVal(e.target.value)}
+      placeholder="0,00"
+      style={{...inputBase, width:100, textAlign:"right"}}
+    />
+  );
+}
+
+function InlineBtn({ clientId, onAddConsumo, onToast }) {
+  const [val] = useFormField(clientId, "val");
+  const handle = () => {
+    const form = getForm(clientId);
+    const v = parseFloat(String(form.val).replace(",","."));
+    if (!form.val || isNaN(v) || v <= 0) {
+      onToast("Informe um valor válido.", "error");
+      return;
+    }
+    onAddConsumo(clientId, form.dt, form.val, form.desc || "Consumo");
+    form.val = ""; form.desc = ""; form.dt = todayStr();
+    form._subs.forEach(fn => fn());
+    onToast("Consumo lançado!");
+  };
+
+  return (
+    <button
+      onClick={handle}
+      disabled={!val}
+      title="Lançar consumo"
       style={{
-        background:"#fff",borderRadius:16,padding:18,cursor:"pointer",
-        border:`2px solid ${hov?"#4F46E5":"transparent"}`,
-        boxShadow:hov?"0 8px 24px rgba(79,70,229,.14)":"0 1px 4px rgba(0,0,0,.08)",
-        transform:hov?"translateY(-3px)":"none",transition:"all .18s",
+        display:"inline-flex", alignItems:"center", gap:5,
+        padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:700,
+        background: val ? "linear-gradient(135deg,#4F46E5,#6D28D9)" : "#E5E7EB",
+        color: val ? "#fff" : "#9CA3AF",
+        border:"none", cursor: val ? "pointer" : "not-allowed",
+        fontFamily:"inherit", whiteSpace:"nowrap",
       }}
     >
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-        <div style={{
-          width:44,height:44,borderRadius:12,flexShrink:0,
-          background:"linear-gradient(135deg,#4F46E5,#6D28D9)",
-          display:"flex",alignItems:"center",justifyContent:"center",
-        }}>
-          <User size={20} color="#fff"/>
-        </div>
-        <Chip color="#15803D" bg="#DCFCE7">{BRL(total)}</Chip>
-      </div>
-      <div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:3}}>{client.name}</div>
-      <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>
-        {client.consumos.length} lançamento{client.consumos.length!==1?"s":""}
-      </div>
-      {client.email && (
-        <div style={{fontSize:12,color:"#6B7280",display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
-          <Mail size={11}/>{client.email}
-        </div>
-      )}
-      {client.phone && (
-        <div style={{fontSize:12,color:"#6B7280",display:"flex",gap:5,alignItems:"center",marginBottom:8}}>
-          <Phone size={11}/>{client.phone}
-        </div>
-      )}
-      <MethodChip method={client.method}/>
-    </div>
+      <Plus size={13}/> Lançar
+    </button>
   );
 }
 
@@ -276,7 +529,6 @@ function ClientDetail({ data, onAddConsumo, onDeleteConsumo, onUpdateMethod, onS
 
   return (
     <div>
-      {/* Client info card */}
       <Card style={{marginBottom:20,padding:22}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
           <div style={{display:"flex",gap:14,alignItems:"center"}}>
@@ -329,9 +581,7 @@ function ClientDetail({ data, onAddConsumo, onDeleteConsumo, onUpdateMethod, onS
         </div>
       </Card>
 
-      {/* Two columns */}
       <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:20,alignItems:"start"}}>
-        {/* Consumo form */}
         <Card>
           <div style={{fontSize:14,fontWeight:800,color:"#111",marginBottom:16}}>Registrar Consumo</div>
           <div style={{marginBottom:12}}>
@@ -357,7 +607,6 @@ function ClientDetail({ data, onAddConsumo, onDeleteConsumo, onUpdateMethod, onS
           </Btn>
         </Card>
 
-        {/* Faturas list */}
         <div>
           <div style={{fontSize:14,fontWeight:800,color:"#111",marginBottom:14}}>Faturas e lançamentos</div>
           {faturas.length===0 ? (
@@ -442,7 +691,6 @@ function FaturasTab({
 
   return (
     <div>
-      {/* Filters */}
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={fy} onChange={e=>setFy(e.target.value)} style={selStyle}>
           <option value="all">Todos os anos</option>
@@ -458,7 +706,6 @@ function FaturasTab({
         </select>
       </div>
 
-      {/* Total card */}
       <div style={{
         background:"#EEF2FF",borderRadius:14,padding:18,marginBottom:20,
         display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,
@@ -541,6 +788,13 @@ export default function App() {
   const [toast,    setToast]    = useState(null);
   const fileRef = useRef();
 
+  useEffect(() => {
+    fetch('http://localhost:5000/api/clientes')
+      .then(res => res.json())
+      .then(data => setClients(data))
+      .catch(err => showToast("Erro ao carregar o banco de dados", "error"));
+  }, []);
+
   const showToast = (msg,type="success") => setToast({msg,type});
 
   /* ── Derived ── */
@@ -606,20 +860,51 @@ export default function App() {
   },[selId,clients,richFaturas]);
 
   /* ── Actions ── */
-  const addClient = () => {
+  const addClient = async () => {
     if(!form.name.trim()) return;
-    setClients(p=>[{...form,id:uid(),consumos:[]}, ...p]);
-    setForm({name:"",email:"",phone:"",method:"BOLETO"});
-    setShowModal(false);
+
+    const novoCliente = { ...form, id: uid(), consumos: [] };
+
+    try {
+      // Manda para o Node.js
+      await fetch('http://localhost:5000/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoCliente)
+      });
+
+      // Atualiza a tela
+      setClients(p => [novoCliente, ...p]);
+      setForm({name:"", email:"", phone:"", method:"BOLETO"});
+      setShowModal(false);
+      showToast("Cliente salvo com sucesso.");
+    } catch (err) {
+      showToast("Erro ao salvar no banco", "error");
+    }
   };
 
-  const addConsumo = (clientId,date,valStr,desc) => {
+  const addConsumo = async (clientId, date, valStr, desc) => {
     const value = parseFloat(String(valStr).replace(",","."));
     if(isNaN(value)||value<=0) return;
-    setClients(p=>p.map(c=>c.id===clientId
-      ? {...c,consumos:[...c.consumos,{id:uid(),date,desc,value}]}
-      : c
-    ));
+
+    const novoConsumo = { id: uid(), date, desc, value };
+
+    try {
+      await fetch(`http://localhost:5000/api/clientes/${clientId}/consumos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoConsumo)
+      });
+
+      // Atualiza a tela
+      setClients(p => p.map(c => c.id === clientId
+        ? {...c, consumos: [...c.consumos, novoConsumo]}
+        : c
+      ));
+      showToast("Consumo salvo com sucesso.");
+    } catch (err) {
+      showToast("Erro ao salvar consumo", "error");
+    }
   };
 
   const deleteConsumo = (clientId,consumoId) => {
@@ -722,6 +1007,7 @@ export default function App() {
         @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
         select { font-family: inherit; }
         button { font-family: inherit; }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
       `}</style>
 
       <input ref={fileRef} type="file" accept=".json" onChange={importJSON} style={{display:"none"}}/>
@@ -772,7 +1058,7 @@ export default function App() {
       {/* ─── Summary cards ─── */}
       <div style={{
         display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:16,
-        padding:"20px 24px 0",maxWidth:1200,margin:"0 auto",
+        padding:"20px 24px 0",maxWidth:1400,margin:"0 auto",
       }}>
         <Card style={{
           background:"linear-gradient(135deg,#4F46E5,#6D28D9)",color:"#fff",padding:22,
@@ -799,7 +1085,7 @@ export default function App() {
       </div>
 
       {/* ─── Main ─── */}
-      <main style={{padding:24,maxWidth:1200,margin:"0 auto"}}>
+      <main style={{padding:24,maxWidth:1400,margin:"0 auto"}}>
         {selId && clientData ? (
           <ClientDetail
             data={clientData}
@@ -853,16 +1139,14 @@ export default function App() {
                     }}
                   />
                 </div>
-                {filteredClients.length===0 ? (
-                  <div style={{textAlign:"center",padding:60,color:"#9CA3AF"}}>
-                    <Users size={40} style={{marginBottom:12,opacity:.25}}/>
-                    <div>Nenhum cliente encontrado</div>
-                  </div>
-                ) : (
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:16}}>
-                    {filteredClients.map(c=><ClientCard key={c.id} client={c} onSelect={setSelId}/>)}
-                  </div>
-                )}
+
+                {/* ── Clients table with inline entry ── */}
+                <ClientsTable
+                  clients={filteredClients}
+                  onSelect={setSelId}
+                  onAddConsumo={addConsumo}
+                  onToast={showToast}
+                />
               </div>
             ) : (
               <FaturasTab
