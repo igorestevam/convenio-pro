@@ -27,32 +27,6 @@ const todayStr = () => new Date().toISOString().slice(0,10);
 let _uid = 300;
 const uid = () => String(++_uid);
 
-/* ─── Seed ──────────────────────────────────────────────────────── */
-const SEED = [
-  {
-    id:"s1", name:"Padaria Pão Quente", email:"contato@paoquente.com.br",
-    phone:"(27) 99111-2233", method:"BOLETO",
-    consumos:[
-      {id:"c1",date:"2025-03-10",desc:"Farinha de trigo 50 kg",value:320.50},
-      {id:"c2",date:"2025-03-22",desc:"Fermento industrial",value:85.00},
-      {id:"c3",date:"2025-04-05",desc:"Açúcar refinado 20 kg",value:210.00},
-      {id:"c4",date:"2025-05-12",desc:"Manteiga extra",value:450.00},
-      {id:"c5",date:"2025-05-28",desc:"Embalagens",value:180.00},
-    ],
-  },
-  {
-    id:"s2", name:"TechSoft Soluções", email:"financeiro@techsoft.com",
-    phone:"(27) 98222-5566", method:"PIX",
-    consumos:[
-      {id:"c6",date:"2025-04-08",desc:"Licença software anual",value:899.00},
-      {id:"c7",date:"2025-04-20",desc:"Suporte técnico",value:350.00},
-      {id:"c8",date:"2025-05-03",desc:"Desenvolvimento web",value:2500.00},
-      {id:"c9",date:"2025-05-15",desc:"Consultoria TI",value:780.00},
-      {id:"c10",date:"2025-06-01",desc:"Manutenção servidor",value:420.00},
-    ],
-  },
-];
-
 /* ═══ Shared UI ═════════════════════════════════════════════════════════ */
 
 function Chip({ children, color="#4F46E5", bg="#EEF2FF", style={} }) {
@@ -775,7 +749,6 @@ function FaturasTab({
 /* ═══ App ════════════════════════════════════════════════════════════════ */
 
 export default function App() {
-  const [clients,  setClients]  = useState(SEED);
   const [fatStatus,setFatStatus]= useState({});
   const [selId,    setSelId]    = useState(null);
   const [tab,      setTab]      = useState("clientes");
