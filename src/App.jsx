@@ -199,22 +199,23 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F4F3F0", padding: 16, color: "#111827"}}>
-      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0", padding: 16 }}>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ width: 50, height: 50, borderRadius: 12, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={24} color="#fff" /></div>
+        {}
+        <div style={{ display:"flex", justifyContent:"center", marginBottom: 20 }}>
+          <img src="/logo-convenio.png" alt="Logo ConvênioPro" style={{ width: 60, height: 60, objectFit: "contain" , borderRadius: 12}} />
         </div>
-        <h2 style={{ textAlign: "center", fontSize: 24, fontWeight: 900, marginBottom: 8, color: "#111" }}>ConvênioPro</h2>
-        <p style={{ textAlign: "center", color: "#6B7280", fontSize: 14, marginBottom: 30 }}>{isLogin ? "Entre na sua conta da empresa" : "Crie uma nova conta de empresa"}</p>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {!isLogin && (<div><Lbl>NOME DA EMPRESA*</Lbl><Inp type="text" value={name} onChange={setName} placeholder="Ex: Padaria do João" /></div>)}
+        <h2 style={{ textAlign:"center", fontSize:24, fontWeight:900, marginBottom:8, color:"#111" }}>ConvênioPro</h2>
+        <p style={{ textAlign:"center", color:"#6B7280", fontSize:14, marginBottom:30 }}>{isLogin ? "Entre na sua conta da empresa" : "Crie uma nova conta de empresa"}</p>
+        <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {!isLogin && (<div><Lbl>NOME DA EMPRESA *</Lbl><Inp type="text" value={name} onChange={setName} placeholder="Ex: Padaria do João" /></div>)}
           <div><Lbl>E-MAIL DA EMPRESA *</Lbl><Inp type="email" value={email} onChange={setEmail} placeholder="empresa@exemplo.com" /></div>
           <div><Lbl>PALAVRA-PASSE *</Lbl><Inp type="password" value={password} onChange={setPassword} placeholder="••••••••" /></div>
-          <Btn style={{ width: "100%", justifyContent: "center", marginTop: 10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
+          <Btn style={{ width:"100%", justifyContent:"center", marginTop:10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
         </form>
-        <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#6B7280" }}>
-          {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color: "#4F46E5", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>{isLogin ? "Registre-se aqui" : "Faça login"}</span>
+        <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#6B7280" }}>
+          {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registe-se aqui" : "Faça login"}</span>
         </div>
       </Card>
     </div>
@@ -748,26 +749,25 @@ function MainApp({ token, empresaEmail, empresaNome, onLogout }) {
       `}</style>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
-      {/* ─── Header ─── */}
       <header className="app-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><Receipt size={18} color="#fff" /></div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <img src="/logo-convenio.png" alt="Logo" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 , borderRadius: 12}} />
           <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>ConvênioPro</div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de consumo de clientes</div>
+            <div style={{fontSize:16,fontWeight:900,color:"#111",lineHeight:1.1}}>ConvênioPro</div>
+            <div style={{fontSize:11,color:"#9CA3AF",fontWeight:500}}>Controle de consumo de clientes</div>
           </div>
         </div>
-        <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="header-actions" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           {selId ? (
-            <Btn onClick={() => setSelId(null)} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn>
+            <Btn onClick={()=>setSelId(null)} variant="secondary"><ArrowLeft size={15}/> Voltar</Btn>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={12} color="#4B5563" /></div>
+              <div style={{display:"flex", alignItems:"center", gap:6, marginRight:10, fontSize:12, fontWeight:700, color:"#6B7280"}}>
+                <div style={{width:24, height:24, borderRadius:6, background:"#E5E7EB", display:"flex", alignItems:"center", justifyContent:"center"}}><User size={12} color="#4B5563"/></div>
                 {empresaNome || empresaEmail}
               </div>
-              <Btn onClick={() => setShowModal(true)}><Plus size={15} /> Novo Cliente</Btn>
-              <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair da Conta"><LogOut size={18} /></button>
+              <Btn onClick={()=>setShowModal(true)}><Plus size={15}/> Novo Cliente</Btn>
+              <button onClick={onLogout} style={{background:"none", border:"none", cursor:"pointer", color:"#EF4444", padding:8}} title="Sair da Conta"><LogOut size={18}/></button>
             </>
           )}
         </div>
