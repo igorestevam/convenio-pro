@@ -122,3 +122,49 @@ app.post('/api/fatextras/:key', authMiddleware, async (req, res) => {
 
 app.get('/', (req, res) => res.send('API Online e Segura!'));
 app.listen(5000, () => console.log('Servidor rodando na porta 5000'));
+
+// Rota para atualizar o perfil e a senha da empresa
+app.put('/api/auth/profile', verificarToken, async (req, res) => {
+  try {
+    // 1. Pegamos os dados que o React enviou
+    const { name, email, currentPassword, newPassword } = req.body;
+    
+    // 2. Pegamos o ID da empresa logada (que deve vir do seu middleware de token)
+    const empresaId = req.userId; // Ajuste conforme o seu middleware (ex: req.user.id)
+
+    // 3. Buscamos a empresa no banco de dados para pegar a senha antiga salva
+    // Substitua esta linha pelo código do seu banco (MongoDB, SQL, arquivo, etc)
+    const empresa = await buscarEmpresaPorId(empresaId); 
+
+    if (!empresa) {
+      return res.status(404).json({ erro: "Empresa não encontrada." });
+    }
+
+    // 4. Se o usuário enviou uma nova senha, precisamos validar a senha atual
+    if (newPassword) {
+      // Compara a senha digitada com a criptografada no banco (usando bcrypt)
+      const senhaValida = await bcrypt.compare(currentPassword, empresa.password);
+      
+      if (!senhaValida) {
+        // É AQUI que o React exibe a mensagem de "Senha atual incorreta"
+        return res.status(400).json({ erro: "A senha atual está incorreta." });
+      }
+
+      // Se a senha atual estiver certa, criptografamos a nova
+      const hashedNovaSenha = await bcrypt.hash(newPassword, 10);
+      
+      // Atualiza a senha no banco de dados...
+      // await atualizarSenhaNoBanco(empresaId, hashedNovaSenha);
+    }
+
+    // 5. Atualiza o nome e o email no banco de dados
+    // await atualizarDadosNoBanco(empresaId, name, email);
+
+    // 6. Devolvemos a resposta em JSON (Isso evita o erro do "<!DOCTYPE")
+    return res.json({ sucesso: true, mensagem: "Conta atualizada com sucesso!" });
+
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: "Erro interno ao atualizar o perfil." });
+  }
+});

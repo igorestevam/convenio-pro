@@ -54,7 +54,8 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0", padding: 16, color: "#111827" }}>
+    // A propriedade fontFamily foi adicionada na div principal logo abaixo:
+    <div style={{ fontFamily: "'DM Sans', sans-serif", display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0", padding: 16, color: "#111827" }}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
         <div style={{ display:"flex", justifyContent:"center", marginBottom: 20 }}>
@@ -69,7 +70,7 @@ export default function Login({ onLogin }) {
           <Btn style={{ width:"100%", justifyContent:"center", marginTop:10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
         </form>
         <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#6B7280" }}>
-          {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registe-se aqui" : "Faça login"}</span>
+          {isLogin ? "Não possui uma conta? " : "Já possui uma conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registre-se aqui" : "Faça login"}</span>
         </div>
       </Card>
     </div>
