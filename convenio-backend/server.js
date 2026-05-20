@@ -38,6 +38,20 @@ const Empresa = mongoose.model('Empresa', EmpresaSchema);
 const Cliente = mongoose.model('Cliente', ClienteSchema);
 const FatExtra = mongoose.model('FatExtra', FatExtraSchema);
 
+const EntrySchema = new mongoose.Schema({ id: String, date: String, value: Number, type: String });
+
+const FuncionarioSchema = new mongoose.Schema({
+  id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+  name: String, salary: Number, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
+});
+
+const FolhaExtraSchema = new mongoose.Schema({
+  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String
+});
+
+const Funcionario = mongoose.model('Funcionario', FuncionarioSchema);
+const FolhaExtra = mongoose.model('FolhaExtra', FolhaExtraSchema);
+
 const authMiddleware = (req, res, next) => {
   const authHeader = req.header('Authorization');
   if (!authHeader) return res.status(401).json({ erro: 'Acesso negado.' });
@@ -118,6 +132,54 @@ app.get('/api/fatextras', authMiddleware, async (req, res) => {
 app.post('/api/fatextras/:key', authMiddleware, async (req, res) => {
   const update = {}; if(req.body.status) update.status = req.body.status; if(req.body.method) update.method = req.body.method;
   await FatExtra.findOneAndUpdate({ key: req.params.key, empresaId: req.empresa.id }, { $set: update }, { upsert: true }); res.json({ success: true });
+});
+
+// ROTAS DE FUNCIONÁRIOS
+app.get('/api/funcionarios', authMiddleware, async (req, res) => res.json(await Funcionario.find({ empresaId: req.empresa.id })));
+app.post('/api/funcionarios', authMiddleware, async (req, res) => res.json(await (new Funcionario({ ...req.body, empresaId: req.empresa.id })).save()));
+
+app.put('/api/funcionarios/:id', authMiddleware, async (req, res) => {
+  const { name, salary, hasPayslip, pixKey, active } = req.body;
+  const f = await Funcionario.findOneAndUpdate(
+    { id: req.params.id, empresaId: req.empresa.id },
+    { name, salary, hasPayslip, pixKey, active },
+    { new: true }
+  );
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  res.json(f);
+});
+
+app.delete('/api/funcionarios/:id', authMiddleware, async (req, res) => {
+  const f = await Funcionario.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  if (f.entries.length > 0) return res.status(400).json({ erro: 'Não é possível excluir um funcionário com histórico.' });
+  await Funcionario.deleteOne({ _id: f._id });
+  res.json({ success: true });
+});
+
+// ROTAS DE ENTRADAS (VALES/CONSUMOS)
+app.post('/api/funcionarios/:id/entries', authMiddleware, async (req, res) => {
+  const f = await Funcionario.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  f.entries.push(req.body); await f.save(); res.json(f);
+});
+app.delete('/api/funcionarios/:id/entries/:entryId', authMiddleware, async (req, res) => {
+  const f = await Funcionario.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (f) { f.entries = f.entries.filter(x => x.id !== req.params.entryId); await f.save(); }
+  res.json({ success: true });
+});
+
+// ROTAS DE FOLHA EXTRA (STATUS DO MÊS)
+app.get('/api/folhaextras', authMiddleware, async (req, res) => {
+  const m = {}; (await FolhaExtra.find({ empresaId: req.empresa.id })).forEach(e => m[e.key] = e.status); res.json(m);
+});
+app.post('/api/folhaextras/:key', authMiddleware, async (req, res) => {
+  await FolhaExtra.findOneAndUpdate(
+    { key: req.params.key, empresaId: req.empresa.id },
+    { $set: { status: req.body.status } },
+    { upsert: true }
+  );
+  res.json({ success: true });
 });
 
 app.get('/', (req, res) => res.send('API Online e Segura!'));

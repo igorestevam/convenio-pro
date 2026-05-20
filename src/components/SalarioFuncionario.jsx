@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign } from "lucide-react";
 
+/* ─── API BASE URL ─── */
+const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
+
 /* ─── Constants & Helpers ─── */
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const STATUS_CFG = {
@@ -26,7 +29,7 @@ function Card({ children, style = {}, padding = 20 }) {
 
 function Btn({ children, onClick, disabled = false, variant = "primary", style = {} }) {
   const themes = {
-    primary: { background: "linear-gradient(135deg, #059669, #A3E635)", color: "#fff", border: "none" },
+    primary: { background: "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none" },
     secondary: { background: "#fff", color: "#374151", border: "1px solid #E5E7EB" },
     success: { background: "#DCFCE7", color: "#15803D", border: "none" },
     danger: { background: "#FEE2E2", color: "#DC2626", border: "none" },
@@ -49,6 +52,15 @@ function StatusSel({ value, onChange }) {
 
 function Lbl({ children }) { return <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .6, marginBottom: 6 }}>{children}</div>; }
 function Inp({ value, onChange, placeholder, type="text", style={} }) { return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{ width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10, border:"1px solid #E5E7EB",fontSize:14,background:"#fff",outline:"none", fontFamily:"inherit", color:"#111827", ...style }} />; }
+
+function Toast({ msg, type, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
+  return (
+    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: type === "error" ? "#FEE2E2" : "#DCFCE7", color: type === "error" ? "#DC2626" : "#15803D", padding: "12px 18px", borderRadius: 12, fontWeight: 700, fontSize: 13, boxShadow: "0 4px 20px rgba(0,0,0,.15)", animation: "toastIn .3s ease" }}>
+      {msg}
+    </div>
+  );
+}
 
 /* ─── Lógica de Formulário Inline (Tabela) ─── */
 const _formState = {};
@@ -88,7 +100,7 @@ function InlineRowInputs({ funcId, onAddEntry }) {
         <option value="VALE">Vale</option>
         <option value="CONSUMO">Consumo</option>
       </select>
-      <button onClick={handleLancar} disabled={!val} style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, background: val ? "linear-gradient(135deg, #059669, #A3E635)" : "#E5E7EB", color: val ? "#fff" : "#9CA3AF", border: "none", cursor: val ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+      <button onClick={handleLancar} disabled={!val} style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, background: val ? "linear-gradient(135deg, #059669, #10B981)" : "#E5E7EB", color: val ? "#fff" : "#9CA3AF", border: "none", cursor: val ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
         <Plus size={14} /> Lançar
       </button>
     </div>
@@ -150,34 +162,31 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 }
 
 /* ─── Main App de Salários ─── */
-export default function SalarioFuncionario({ onBack, onLogout }) {
+export default function SalarioFuncionario({ token, empresaEmail, empresaNome, onBack, onLogout }) {
   const [tab, setTab] = useState("funcionarios");
   
-  // Base de dados inicial pré-configurada com a equipa
-  const [funcionarios, setFuncionarios] = useState([
-    { id: "1", name: "Adila", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "2", name: "Aloisio", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "3", name: "Aucilene", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "4", name: "Brenda", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "5", name: "Carlos", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "6", name: "Cassia", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "7", name: "Edimar", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "8", name: "Eloi", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "9", name: "Emily", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "10", name: "Geisiane", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "11", name: "Gidalva", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "12", name: "Igor Estevam", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "13", name: "Karina", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "14", name: "Mila", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "15", name: "Natyelle", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-    { id: "16", name: "Patricia", salary: 1500, hasPayslip: true, pixKey: "", active: true, entries: [] },
-  ]);
-
+  const [funcionarios, setFuncionarios] = useState([]);
   const [folhaStatus, setFolhaStatus] = useState({});
+
   const [search, setSearch] = useState("");
   const [showActive, setShowActive] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
   const [modalData, setModalData] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = "success") => setToast({ msg, type });
+
+  const fetchAPI = async (endpoint, options = {}) => {
+    const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(options.headers || {}) } });
+    if (res.status === 401) { onLogout(); throw new Error("Sessão expirada"); }
+    return res;
+  };
+
+  useEffect(() => {
+    Promise.all([fetchAPI('/funcionarios').then(r => r.json()), fetchAPI('/folhaextras').then(r => r.json())])
+      .then(([funcsDb, extrasDb]) => { setFuncionarios(funcsDb || []); setFolhaStatus(extrasDb || {}); })
+      .catch(err => { if (err.message !== "Sessão expirada") showToast("Erro ao carregar banco de dados", "error"); });
+  }, [token]);
 
   /* ── Derived Data ── */
   const filteredFuncs = useMemo(() => {
@@ -190,7 +199,7 @@ export default function SalarioFuncionario({ onBack, onLogout }) {
 
   const { groupedFolhas, totalBrutoGeral, totalValesGeral, totalLiquidoGeral } = useMemo(() => {
     const monthsSet = new Set([mkKey(todayStr())]);
-    funcionarios.forEach(f => f.entries.forEach(e => monthsSet.add(mkKey(e.date))));
+    funcionarios.forEach(f => (f.entries || []).forEach(e => monthsSet.add(mkKey(e.date))));
     
     const sortedMonths = Array.from(monthsSet).sort().reverse();
     const grouped = {};
@@ -200,12 +209,12 @@ export default function SalarioFuncionario({ onBack, onLogout }) {
       const funcFolhas = [];
       funcionarios.forEach(f => {
         const isAct = f.active !== false;
-        const monthEntries = f.entries.filter(e => mkKey(e.date) === month);
+        const monthEntries = (f.entries || []).filter(e => mkKey(e.date) === month);
         
         if (isAct || monthEntries.length > 0) {
           const vales = monthEntries.filter(e => e.type === "VALE").reduce((s, x) => s + x.value, 0);
           const consumos = monthEntries.filter(e => e.type === "CONSUMO").reduce((s, x) => s + x.value, 0);
-          const base = Number(f.salary);
+          const base = Number(f.salary) || 0;
           const liquido = base - vales - consumos;
           
           tB += base; tV += (vales + consumos); tL += liquido;
@@ -220,40 +229,63 @@ export default function SalarioFuncionario({ onBack, onLogout }) {
       grouped[month] = funcFolhas.sort((a,b) => a.name.localeCompare(b.name));
     });
 
-    return { groupedFolhas, totalBrutoGeral: tB, totalValesGeral: tV, totalLiquidoGeral: tL };
+    return { groupedFolhas: grouped, totalBrutoGeral: tB, totalValesGeral: tV, totalLiquidoGeral: tL };
   }, [funcionarios, folhaStatus]);
 
   /* ── Actions ── */
-  const handleSaveFunc = (data) => {
+  const handleSaveFunc = async (data) => {
     if (data.id) {
-      setFuncionarios(p => p.map(f => f.id === data.id ? { ...f, ...data, salary: Number(data.salary) } : f));
+      try {
+        await fetchAPI(`/funcionarios/${data.id}`, { method: 'PUT', body: JSON.stringify({ ...data, salary: Number(data.salary) }) });
+        setFuncionarios(p => p.map(f => f.id === data.id ? { ...f, ...data, salary: Number(data.salary) } : f));
+        showToast("Funcionário atualizado!");
+      } catch (err) { showToast("Erro ao atualizar", "error"); }
     } else {
-      setFuncionarios(p => [...p, { ...data, id: uid(), salary: Number(data.salary), active: true, entries: [] }]);
+      try {
+        const newFunc = { ...data, id: uid(), salary: Number(data.salary), active: true, entries: [] };
+        await fetchAPI('/funcionarios', { method: 'POST', body: JSON.stringify(newFunc) });
+        setFuncionarios(p => [...p, newFunc]);
+        showToast("Funcionário criado!");
+      } catch (err) { showToast("Erro ao criar", "error"); }
     }
     setModalData(null);
   };
 
-  const handleDeleteFunc = (id) => {
-    setFuncionarios(p => p.filter(f => f.id !== id));
-    setModalData(null);
+  const handleDeleteFunc = async (id) => {
+    try {
+      await fetchAPI(`/funcionarios/${id}`, { method: 'DELETE' });
+      setFuncionarios(p => p.filter(f => f.id !== id));
+      showToast("Funcionário excluído!");
+      setModalData(null);
+    } catch (err) { showToast("Erro ao excluir", "error"); }
   };
 
-  const handleAddEntry = (funcId, date, value, type) => {
-    setFuncionarios(p => p.map(f => f.id === funcId ? { ...f, entries: [...f.entries, { id: uid(), date, value, type }] } : f));
+  const handleAddEntry = async (funcId, date, value, type) => {
+    const newEntry = { id: uid(), date, value, type };
+    try {
+      await fetchAPI(`/funcionarios/${funcId}/entries`, { method: 'POST', body: JSON.stringify(newEntry) });
+      setFuncionarios(p => p.map(f => f.id === funcId ? { ...f, entries: [...(f.entries || []), newEntry] } : f));
+      showToast("Lançamento salvo!");
+    } catch (err) { showToast("Erro ao lançar", "error"); }
   };
 
-  const handleChangeStatus = (key, status) => {
-    setFolhaStatus(p => ({ ...p, [key]: status }));
+  const handleChangeStatus = async (key, status) => {
+    try {
+      await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify({ status }) });
+      setFolhaStatus(p => ({ ...p, [key]: status }));
+    } catch (err) { showToast("Erro ao atualizar status", "error"); }
   };
 
   return (
     <div style={{fontFamily:"'DM Sans',sans-serif",background:"#F4F3F0",minHeight:"100vh",color:"#111827"}}>
+      <style>{`@keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }`}</style>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       
       {/* ── HEADER ── */}
       <header style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(255,255,255,.92)", backdropFilter: "blur(14px)", borderBottom: "1px solid #EBEBEB", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Btn onClick={onBack} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}><ArrowLeft size={15} /> Menu</Btn>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg,#059669,#A3E635)", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={18} color="#fff" /></div>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={18} color="#fff" /></div>
           <div><div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Folha de Pagamento</div><div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de salários e vales</div></div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -266,7 +298,7 @@ export default function SalarioFuncionario({ onBack, onLogout }) {
         
         {/* ── DASHBOARD INDICATORS ── */}
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", marginBottom: 24 }}>
-          <Card style={{background:"linear-gradient(135deg,#059669,#A3E635)",color:"#fff",padding:22, textAlign:"center", display:"flex",flexDirection:"column",justifyContent:"center"}}>
+          <Card style={{background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",padding:22, textAlign:"center", display:"flex",flexDirection:"column",justifyContent:"center"}}>
             <div style={{fontSize:11,fontWeight:800,opacity:.8,letterSpacing:.7,marginBottom:8}}>LÍQUIDO GLOBAL A PAGAR</div>
             <div style={{fontSize:32,fontWeight:900}}>{BRL(totalLiquidoGeral)}</div>
           </Card>
@@ -321,7 +353,7 @@ export default function SalarioFuncionario({ onBack, onLogout }) {
                       <tr key={f.id} style={{ borderTop: "1px solid #F3F4F6", background: idx % 2 === 0 ? "#fff" : "#FAFAFA", opacity: f.active ? 1 : 0.6 }}>
                         <td style={{padding:"16px 16px 16px 20px"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#A3E635)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
+                            <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#10B981)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
                             <div>
                               <div style={{fontWeight: 900, color: "#111", fontSize: 14}}>{f.name} {!f.active && <span style={{fontSize:10,color:"#DC2626",fontWeight:800,marginLeft:4}}>(Inativo)</span>}</div>
                               <div style={{display:"flex", gap:4, marginTop:4}}>

@@ -189,7 +189,7 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
   }
 
   if (activeTab === 'salario') {
-    return <SalarioFuncionario onBack={() => setActiveTab('home')} onLogout={onLogout} />;
+    return <SalarioFuncionario token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => setActiveTab('home')} onLogout={onLogout} />;
   }
 
   return (
