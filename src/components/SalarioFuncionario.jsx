@@ -19,12 +19,6 @@ const mkKey = (d) => d.slice(0, 7);
 let _uid = Date.now();
 const uid = () => String(++_uid);
 
-const parseBrValue = (val) => {
-  let str = String(val).replace(/[^\d.,]/g, '');
-  if (str.includes(',')) str = str.replace(/\./g, '').replace(',', '.');
-  return parseFloat(str);
-};
-
 /* ─── Shared UI ─── */
 function Chip({ children, color = "#059669", bg = "#D1FAE5", style = {} }) {
   return <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 800, color, background: bg, padding: "2px 8px", borderRadius: 99, letterSpacing: .4, whiteSpace: "nowrap", ...style }}>{children}</span>;
@@ -88,21 +82,31 @@ function useFormField(id, field) {
 const inpBase = { boxSizing: "border-box", padding: "7px 10px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, background: "#FAFAFA", outline: "none", fontFamily: "inherit" };
 
 function InlineConsumo({ value, onSave }) {
+  const [isEditing, setIsEditing] = useState(false);
   const [val, setVal] = useState(value === 0 ? "" : value);
   useEffect(() => { setVal(value === 0 ? "" : value); }, [value]);
   const handleCommit = () => {
-    const v = parseBrValue(val);
+    const v = typeof parseBrValue === 'function' ? parseBrValue(val) : parseFloat(String(val).replace(",", "."));
     const finalV = isNaN(v) || v < 0 ? 0 : v;
     if (finalV !== value) onSave(finalV);
     setVal(finalV === 0 ? "" : finalV);
+    setIsEditing(false);
   };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>Consumo (R$):</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCommit()} placeholder="0,00" style={{ ...inpBase, width: 80, textAlign: "right", padding: "6px 8px" }} />
-        <button type="button" onClick={handleCommit} style={{ background: "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 800, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }} title="Salvar Consumo"><CheckCircle2 size={13} /> Salvar</button>
-      </div>
+      <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>Consumos:</span>
+      {!isEditing ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <b style={{ color: "#4F46E5" }}>{BRL(value)}</b>
+          <button type="button" onClick={() => setIsEditing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", padding: 2, display: "flex" }} title="Editar Consumo"><Edit size={13} /></button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCommit()} placeholder="0,00" style={{ ...inpBase, width: 80, textAlign: "right", padding: "6px 8px", color: "#4F46E5", fontWeight: 800 }} autoFocus />
+          <button type="button" onClick={handleCommit} style={{ background: "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 800, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }} title="Salvar Consumo"><CheckCircle2 size={13} /> Salvar</button>
+          <button type="button" onClick={() => { setIsEditing(false); setVal(value === 0 ? "" : value); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, display: "flex" }} title="Cancelar"><X size={14} /></button>
+        </div>
+      )}
     </div>
   );
 }
@@ -112,7 +116,7 @@ function InlineRowInputs({ funcId, onAddEntry }) {
   const [val, setVal] = useFormField(funcId, "val");
 
   const handleLancar = () => {
-    const v = parseBrValue(val);
+    const v = parseFloat(String(val).replace(",", "."));
     if (!val || isNaN(v) || v <= 0) return alert("Informe um valor válido.");
     onAddEntry(funcId, dt, v);
     const form = getForm(funcId); form.val = ""; form.dt = todayStr(); form._subs.forEach(fn => fn());
@@ -421,7 +425,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     try {
       await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify(data) });
       setFolhaStatus(p => ({ ...p, [key]: { ...(p[key] || {}), ...data } }));
-        if (data.consumo !== undefined) showToast("Consumo salvo!");
+      if (data.consumo !== undefined) showToast("Consumo alterado!");
     } catch (err) { showToast("Erro ao atualizar", "error"); }
   };
 
