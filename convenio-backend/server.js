@@ -42,11 +42,11 @@ const EntrySchema = new mongoose.Schema({ id: String, date: String, value: Numbe
 
 const FuncionarioSchema = new mongoose.Schema({
   id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
-  name: String, salary: Number, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
+  name: String, salary: Number, consumo: { type: Number, default: 0 }, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
 });
 
 const FolhaExtraSchema = new mongoose.Schema({
-  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String
+  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String, consumo: Number
 });
 
 const Funcionario = mongoose.model('Funcionario', FuncionarioSchema);
@@ -139,10 +139,10 @@ app.get('/api/funcionarios', authMiddleware, async (req, res) => res.json(await 
 app.post('/api/funcionarios', authMiddleware, async (req, res) => res.json(await (new Funcionario({ ...req.body, empresaId: req.empresa.id })).save()));
 
 app.put('/api/funcionarios/:id', authMiddleware, async (req, res) => {
-  const { name, salary, hasPayslip, pixKey, active } = req.body;
+  const { name, salary, consumo, hasPayslip, pixKey, active } = req.body;
   const f = await Funcionario.findOneAndUpdate(
     { id: req.params.id, empresaId: req.empresa.id },
-    { name, salary, hasPayslip, pixKey, active },
+    { name, salary, consumo, hasPayslip, pixKey, active },
     { new: true }
   );
   if (!f) return res.status(404).json({ erro: 'Não encontrado' });
@@ -171,12 +171,15 @@ app.delete('/api/funcionarios/:id/entries/:entryId', authMiddleware, async (req,
 
 // ROTAS DE FOLHA EXTRA (STATUS DO MÊS)
 app.get('/api/folhaextras', authMiddleware, async (req, res) => {
-  const m = {}; (await FolhaExtra.find({ empresaId: req.empresa.id })).forEach(e => m[e.key] = e.status); res.json(m);
+  const m = {}; (await FolhaExtra.find({ empresaId: req.empresa.id })).forEach(e => m[e.key] = { status: e.status, consumo: e.consumo || 0 }); res.json(m);
 });
 app.post('/api/folhaextras/:key', authMiddleware, async (req, res) => {
+  const update = {};
+  if (req.body.status !== undefined) update.status = req.body.status;
+  if (req.body.consumo !== undefined) update.consumo = req.body.consumo;
   await FolhaExtra.findOneAndUpdate(
     { key: req.params.key, empresaId: req.empresa.id },
-    { $set: { status: req.body.status } },
+    { $set: update },
     { upsert: true }
   );
   res.json({ success: true });

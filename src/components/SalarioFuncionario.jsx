@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign } from "lucide-react";
+import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight } from "lucide-react";
+import * as XLSX from "xlsx";
 
 /* ─── API BASE URL ─── */
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
@@ -17,6 +18,12 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 const mkKey = (d) => d.slice(0, 7);
 let _uid = Date.now();
 const uid = () => String(++_uid);
+
+const parseBrValue = (val) => {
+  let str = String(val).replace(/[^\d.,]/g, '');
+  if (str.includes(',')) str = str.replace(/\./g, '').replace(',', '.');
+  return parseFloat(str);
+};
 
 /* ─── Shared UI ─── */
 function Chip({ children, color = "#059669", bg = "#D1FAE5", style = {} }) {
@@ -64,7 +71,7 @@ function Toast({ msg, type, onDone }) {
 
 /* ─── Lógica de Formulário Inline (Tabela) ─── */
 const _formState = {};
-function getForm(id) { if (!_formState[id]) _formState[id] = { val: "", dt: todayStr(), type: "VALE", _subs: [] }; return _formState[id]; }
+function getForm(id) { if (!_formState[id]) _formState[id] = { val: "", dt: todayStr(), _subs: [] }; return _formState[id]; }
 
 function useFormField(id, field) {
   const [value, setValue] = useState(() => getForm(id)[field]);
@@ -80,29 +87,138 @@ function useFormField(id, field) {
 
 const inpBase = { boxSizing: "border-box", padding: "7px 10px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, background: "#FAFAFA", outline: "none", fontFamily: "inherit" };
 
+function InlineConsumo({ value, onSave }) {
+  const [val, setVal] = useState(value === 0 ? "" : value);
+  useEffect(() => { setVal(value === 0 ? "" : value); }, [value]);
+  const handleCommit = () => {
+    const v = parseBrValue(val);
+    const finalV = isNaN(v) || v < 0 ? 0 : v;
+    if (finalV !== value) onSave(finalV);
+    setVal(finalV === 0 ? "" : finalV);
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>Consumo (R$):</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCommit()} placeholder="0,00" style={{ ...inpBase, width: 80, textAlign: "right", padding: "6px 8px" }} />
+        <button type="button" onClick={handleCommit} style={{ background: "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 800, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 }} title="Salvar Consumo"><CheckCircle2 size={13} /> Salvar</button>
+      </div>
+    </div>
+  );
+}
+
 function InlineRowInputs({ funcId, onAddEntry }) {
   const [dt, setDt] = useFormField(funcId, "dt");
   const [val, setVal] = useFormField(funcId, "val");
-  const [type, setType] = useFormField(funcId, "type");
 
   const handleLancar = () => {
-    const v = parseFloat(String(val).replace(",", "."));
+    const v = parseBrValue(val);
     if (!val || isNaN(v) || v <= 0) return alert("Informe um valor válido.");
-    onAddEntry(funcId, dt, v, type);
-    const form = getForm(funcId); form.val = ""; form.dt = todayStr(); form.type = "VALE"; form._subs.forEach(fn => fn());
+    onAddEntry(funcId, dt, v);
+    const form = getForm(funcId); form.val = ""; form.dt = todayStr(); form._subs.forEach(fn => fn());
   };
 
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       <input type="date" value={dt} onChange={e => setDt(e.target.value)} style={{ ...inpBase, width: 125 }} />
       <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="R$ 0,00" style={{ ...inpBase, width: 85, textAlign: "right" }} />
-      <select value={type} onChange={e => setType(e.target.value)} style={{ ...inpBase, width: 100, cursor: "pointer", fontWeight: 700, color: type==="VALE" ? "#D97706" : "#4F46E5" }}>
-        <option value="VALE">Vale</option>
-        <option value="CONSUMO">Consumo</option>
-      </select>
       <button onClick={handleLancar} disabled={!val} style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, background: val ? "linear-gradient(135deg, #059669, #10B981)" : "#E5E7EB", color: val ? "#fff" : "#9CA3AF", border: "none", cursor: val ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-        <Plus size={14} /> Lançar
+        <Plus size={14} /> Lançar Vale
       </button>
+    </div>
+  );
+}
+
+/* ─── Detalhes do Funcionário (Página Interna) ─── */
+function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit }) {
+  const [dt, setDt] = useState(todayStr());
+  const [val, setVal] = useState("");
+
+  const handleLancar = () => {
+    const v = parseFloat(String(val).replace(",", "."));
+    if (!val || isNaN(v) || v <= 0) return alert("Informe um valor válido.");
+    onAddEntry(func.id, dt, v);
+    setVal(""); setDt(todayStr());
+  };
+
+  const grouped = useMemo(() => {
+    const mSet = new Set([mkKey(todayStr())]);
+    (func.entries || []).forEach(e => mSet.add(mkKey(e.date)));
+    Object.keys(folhaStatus).forEach(k => {
+      if (k.startsWith(func.id + "_")) mSet.add(k.split("_")[1]);
+    });
+    
+    const arr = Array.from(mSet).sort().reverse();
+    return arr.map(month => {
+      const key = `${func.id}_${month}`;
+      const valesList = (func.entries || []).filter(e => mkKey(e.date) === month);
+      const valesTotal = valesList.reduce((s, x) => s + x.value, 0);
+      const fExtra = folhaStatus[key] || {};
+      const consumo = fExtra.consumo || 0;
+      return { month, key, valesTotal, valesList, consumo };
+    });
+  }, [func.entries, folhaStatus, func.id]);
+
+  return (
+    <div>
+      <Card style={{ marginBottom: 20, padding: 22 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 900, color: "#fff" }}>{func.name.charAt(0)}</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#111" }}>{func.name}</div>
+                {func.active === false && <Chip color="#DC2626" bg="#FEE2E2">Inativo</Chip>}
+                <button onClick={onOpenEdit} style={{ display: "flex", alignItems: "center", gap: 4, background: "#F3F4F6", border: "none", padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "#4B5563", cursor: "pointer", fontFamily: "inherit" }}><Edit size={12} /> Editar</button>
+              </div>
+              <div style={{ display: "flex", gap: 14, marginTop: 5, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: "#6B7280" }}>Salário Base: <b>{BRL(func.salary)}</b></span>
+                {func.pixKey && <span style={{ fontSize: 12, color: "#6B7280" }}>PIX: <b>{func.pixKey}</b></span>}
+                {func.hasPayslip && <span style={{ fontSize: 12, color: "#059669" }}>Contracheque: <b>Sim</b></span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card style={{ marginBottom: 20, padding: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#111", marginBottom: 14 }}>Novo Vale (Adiantamento)</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div><Lbl>DATA</Lbl><input type="date" value={dt} onChange={e => setDt(e.target.value)} style={{ ...inpBase, width: 140 }} /></div>
+          <div><Lbl>VALOR (R$)</Lbl><input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="0,00" style={{ ...inpBase, width: 120 }} /></div>
+          <div style={{ marginTop: 21 }}><Btn onClick={handleLancar} disabled={!val}><Plus size={14} /> Lançar Vale</Btn></div>
+        </div>
+      </Card>
+
+      {grouped.map(mData => (
+        <Card key={mData.month} style={{ marginBottom: 14, padding: 0 }}>
+          <div style={{ padding: "14px 18px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>{MONTHS[parseInt(mData.month.split("-")[1]) - 1]} / {mData.month.split("-")[0]}</span>
+            <div style={{ display: "flex", gap: 16, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 6 }}>Vales: <b style={{color: "#D97706"}}>{BRL(mData.valesTotal)}</b></span>
+              <InlineConsumo value={mData.consumo} onSave={v => onUpdateFolhaExtra(mData.key, { consumo: v })} />
+            </div>
+          </div>
+          {mData.valesList.length > 0 ? (
+            <div className="table-responsive">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead><tr style={{ background: "#F9FAFB" }}>{["Data", "Vale (R$)", ""].map(h => (<th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: .5 }}>{h}</th>))}</tr></thead>
+                <tbody>
+                  {[...mData.valesList].sort((a,b) => b.date.localeCompare(a.date)).map(e => (
+                    <tr key={e.id} style={{ borderTop: "1px solid #F3F4F6" }}>
+                      <td style={{ padding: "10px 16px", color: "#374151", whiteSpace: "nowrap" }}>{fmtD(e.date)}</td>
+                      <td style={{ padding: "10px 16px", fontWeight: 800, color: "#D97706" }}>{BRL(e.value)}</td>
+                      <td style={{ padding: "10px 16px", textAlign: "right" }}><button onClick={() => { if(window.confirm("Excluir vale?")) onDeleteEntry(func.id, e.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, borderRadius: 6 }}><Trash2 size={13} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: "16px", textAlign: "center", color: "#9CA3AF", fontSize: 12 }}>Nenhum vale registrado neste mês.</div>
+          )}
+        </Card>
+      ))}
     </div>
   );
 }
@@ -122,8 +238,10 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
           <div><Lbl>NOME DO FUNCIONÁRIO *</Lbl><Inp value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="Ex: João da Silva" /></div>
-          <div><Lbl>SALÁRIO BASE (R$) *</Lbl><Inp type="number" value={form.salary} onChange={v => setForm({ ...form, salary: v })} placeholder="1500" /></div>
-          <div><Lbl>CHAVE PIX</Lbl><Inp value={form.pixKey} onChange={v => setForm({ ...form, pixKey: v })} placeholder="CPF, E-mail ou Telefone" /></div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}><Lbl>SALÁRIO BASE (R$) *</Lbl><Inp type="number" value={form.salary} onChange={v => setForm({ ...form, salary: v })} placeholder="1500" /></div>
+            <div style={{ flex: 1 }}><Lbl>CHAVE PIX</Lbl><Inp value={form.pixKey} onChange={v => setForm({ ...form, pixKey: v })} placeholder="CPF, E-mail ou Telefone" /></div>
+          </div>
           
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
@@ -164,6 +282,7 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 /* ─── Main App de Salários ─── */
 export default function SalarioFuncionario({ token, empresaEmail, empresaNome, onBack, onLogout }) {
   const [tab, setTab] = useState("funcionarios");
+  const [selId, setSelId] = useState(null);
   
   const [funcionarios, setFuncionarios] = useState([]);
   const [folhaStatus, setFolhaStatus] = useState({});
@@ -188,6 +307,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       .catch(err => { if (err.message !== "Sessão expirada") showToast("Erro ao carregar banco de dados", "error"); });
   }, [token]);
 
+  const funcData = useMemo(() => funcionarios.find(f => f.id === selId), [selId, funcionarios]);
+
   /* ── Derived Data ── */
   const filteredFuncs = useMemo(() => {
     return funcionarios.filter(f => {
@@ -197,52 +318,71 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     });
   }, [funcionarios, search, showActive, showInactive]);
 
-  const { groupedFolhas, totalBrutoGeral, totalValesGeral, totalLiquidoGeral } = useMemo(() => {
-    const monthsSet = new Set([mkKey(todayStr())]);
+  const { groupedFolhas, totalBrutoGeral, totalValesGeral, totalLiquidoGeral, valesMesAtual, consumosAtivos } = useMemo(() => {
+    const currentMonth = mkKey(todayStr());
+    const monthsSet = new Set([currentMonth]);
     funcionarios.forEach(f => (f.entries || []).forEach(e => monthsSet.add(mkKey(e.date))));
+    Object.keys(folhaStatus).forEach(k => monthsSet.add(k.split("_")[1]));
     
     const sortedMonths = Array.from(monthsSet).sort().reverse();
     const grouped = {};
     let tB = 0, tV = 0, tL = 0;
+    const vMes = [];
+    const cAtivos = [];
 
     sortedMonths.forEach(month => {
       const funcFolhas = [];
       funcionarios.forEach(f => {
         const isAct = f.active !== false;
         const monthEntries = (f.entries || []).filter(e => mkKey(e.date) === month);
+        const fExtra = folhaStatus[`${f.id}_${month}`] || {};
+        const consumo = fExtra.consumo || 0;
         
-        if (isAct || monthEntries.length > 0) {
-          const vales = monthEntries.filter(e => e.type === "VALE").reduce((s, x) => s + x.value, 0);
-          const consumos = monthEntries.filter(e => e.type === "CONSUMO").reduce((s, x) => s + x.value, 0);
+        if (isAct || monthEntries.length > 0 || consumo > 0 || fExtra.status) {
+          const vales = monthEntries.reduce((s, x) => s + x.value, 0);
           const base = Number(f.salary) || 0;
-          const liquido = base - vales - consumos;
+          const liquido = base - vales - consumo;
           
-          tB += base; tV += (vales + consumos); tL += liquido;
+          tB += base; tV += vales; tL += liquido;
           
           funcFolhas.push({
-            ...f, base, vales, consumos, liquido, 
+            ...f, base, vales, consumos: consumo, liquido, 
             key: `${f.id}_${month}`,
-            status: folhaStatus[`${f.id}_${month}`] || "PENDENTE"
+            status: fExtra.status || "PENDENTE"
           });
+
+          if (month === currentMonth) {
+            monthEntries.forEach(e => {
+              vMes.push({ id: e.id, funcName: f.name, date: e.date, value: e.value });
+            });
+            if (consumo > 0 && isAct) {
+              cAtivos.push({ id: f.id, funcName: f.name, value: consumo });
+            }
+          }
         }
       });
       grouped[month] = funcFolhas.sort((a,b) => a.name.localeCompare(b.name));
     });
 
-    return { groupedFolhas: grouped, totalBrutoGeral: tB, totalValesGeral: tV, totalLiquidoGeral: tL };
+    vMes.sort((a, b) => b.date.localeCompare(a.date));
+    cAtivos.sort((a, b) => a.funcName.localeCompare(b.funcName));
+
+    return { groupedFolhas: grouped, totalBrutoGeral: tB, totalValesGeral: tV, totalLiquidoGeral: tL, valesMesAtual: vMes, consumosAtivos: cAtivos };
   }, [funcionarios, folhaStatus]);
 
   /* ── Actions ── */
   const handleSaveFunc = async (data) => {
+    const payload = { ...data, salary: Number(data.salary) };
+    delete payload.consumo; // Removido campo estático antigo
     if (data.id) {
       try {
-        await fetchAPI(`/funcionarios/${data.id}`, { method: 'PUT', body: JSON.stringify({ ...data, salary: Number(data.salary) }) });
-        setFuncionarios(p => p.map(f => f.id === data.id ? { ...f, ...data, salary: Number(data.salary) } : f));
+        await fetchAPI(`/funcionarios/${data.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        setFuncionarios(p => p.map(f => f.id === data.id ? { ...f, ...payload } : f));
         showToast("Funcionário atualizado!");
       } catch (err) { showToast("Erro ao atualizar", "error"); }
     } else {
       try {
-        const newFunc = { ...data, id: uid(), salary: Number(data.salary), active: true, entries: [] };
+        const newFunc = { ...payload, id: uid(), active: true, entries: [] };
         await fetchAPI('/funcionarios', { method: 'POST', body: JSON.stringify(newFunc) });
         setFuncionarios(p => [...p, newFunc]);
         showToast("Funcionário criado!");
@@ -260,8 +400,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     } catch (err) { showToast("Erro ao excluir", "error"); }
   };
 
-  const handleAddEntry = async (funcId, date, value, type) => {
-    const newEntry = { id: uid(), date, value, type };
+  const handleAddEntry = async (funcId, date, value) => {
+    const newEntry = { id: uid(), date, value };
     try {
       await fetchAPI(`/funcionarios/${funcId}/entries`, { method: 'POST', body: JSON.stringify(newEntry) });
       setFuncionarios(p => p.map(f => f.id === funcId ? { ...f, entries: [...(f.entries || []), newEntry] } : f));
@@ -269,48 +409,133 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     } catch (err) { showToast("Erro ao lançar", "error"); }
   };
 
-  const handleChangeStatus = async (key, status) => {
+  const handleDeleteEntry = async (funcId, entryId) => {
     try {
-      await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify({ status }) });
-      setFolhaStatus(p => ({ ...p, [key]: status }));
-    } catch (err) { showToast("Erro ao atualizar status", "error"); }
+      await fetchAPI(`/funcionarios/${funcId}/entries/${entryId}`, { method: 'DELETE' });
+      setFuncionarios(p => p.map(f => f.id === funcId ? { ...f, entries: (f.entries || []).filter(e => e.id !== entryId) } : f));
+      showToast("Lançamento excluído!");
+    } catch (err) { showToast("Erro ao excluir", "error"); }
+  };
+
+  const handleUpdateFolhaExtra = async (key, data) => {
+    try {
+      await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify(data) });
+      setFolhaStatus(p => ({ ...p, [key]: { ...(p[key] || {}), ...data } }));
+        if (data.consumo !== undefined) showToast("Consumo salvo!");
+    } catch (err) { showToast("Erro ao atualizar", "error"); }
+  };
+
+  const exportXLSX = (monthKey, fList) => {
+    const monthName = MONTHS[parseInt(monthKey.split("-")[1]) - 1];
+    const year = monthKey.split("-")[0];
+    const wb = XLSX.utils.book_new();
+    
+    const rows = [
+      ["Mês/Ano", `${monthName}/${year}`],
+      [],
+      ["Funcionário", "PIX", "Salário Bruto (R$)", "Vales Retirados (R$)", "Consumos (R$)", "Líquido a Pagar (R$)", "Status"]
+    ];
+
+    fList.forEach(f => {
+      rows.push([f.name, f.pixKey || "Sem PIX", f.base, f.vales, f.consumos, f.liquido, f.status]);
+    });
+
+    const totalLiquido = fList.reduce((s, x) => s + x.liquido, 0);
+    rows.push(["", "", "", "", "TOTAL LÍQUIDO", totalLiquido, ""]);
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Folha");
+    XLSX.writeFile(wb, `Folha-Pagamento-${monthKey}.xlsx`);
   };
 
   return (
     <div style={{fontFamily:"'DM Sans',sans-serif",background:"#F4F3F0",minHeight:"100vh",color:"#111827"}}>
-      <style>{`@keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+        select, button { font-family: inherit; } input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+        .app-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.92); backdrop-filter: blur(14px); border-bottom: 1px solid #EBEBEB; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        @media (max-width: 600px) { .app-header { flex-direction: column; align-items: flex-start; padding: 16px; } .header-actions { width: 100%; justify-content: space-between; margin-top: 8px; } }
+        .summary-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+        .top-dashboard-container { display: grid; gap: 16px; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .top-dashboard-container { grid-template-columns: 2fr 1.2fr; } }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .table-responsive table { min-width: 700px; } 
+        .search-bar-container { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+        .search-input-wrapper { position: relative; flex: 1; min-width: 250px; }
+      `}</style>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       
       {/* ── HEADER ── */}
-      <header style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(255,255,255,.92)", backdropFilter: "blur(14px)", borderBottom: "1px solid #EBEBEB", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <header className="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Btn onClick={onBack} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}><ArrowLeft size={15} /> Menu</Btn>
           <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={18} color="#fff" /></div>
           <div><div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Folha de Pagamento</div><div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de salários e vales</div></div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <Btn onClick={() => setModalData({})}><Plus size={15} /> Novo Funcionário</Btn>
-          <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
+        <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {selId ? <Btn onClick={() => setSelId(null)} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Users size={12} color="#4B5563" />
+                </div>
+                {empresaNome || empresaEmail}
+              </div>
+              <Btn onClick={() => setModalData({})}><Plus size={15} /> Novo Funcionário</Btn>
+              <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
+            </>
+          )}
         </div>
       </header>
 
       <main style={{padding:24,maxWidth:1400,margin:"0 auto"}}>
-        
-        {/* ── DASHBOARD INDICATORS ── */}
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", marginBottom: 24 }}>
-          <Card style={{background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",padding:22, textAlign:"center", display:"flex",flexDirection:"column",justifyContent:"center"}}>
-            <div style={{fontSize:11,fontWeight:800,opacity:.8,letterSpacing:.7,marginBottom:8}}>LÍQUIDO GLOBAL A PAGAR</div>
-            <div style={{fontSize:32,fontWeight:900}}>{BRL(totalLiquidoGeral)}</div>
+      {selId && funcData ? (
+        <FuncionarioDetail func={funcData} folhaStatus={folhaStatus} onAddEntry={handleAddEntry} onDeleteEntry={handleDeleteEntry} onUpdateFolhaExtra={handleUpdateFolhaExtra} onOpenEdit={() => setModalData(funcData)} />
+      ) : (
+        <>
+        {/* ── DASHBOARD INDICATORS & TABS ── */}
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <Card style={{background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",padding:22, textAlign:"center", flex: 1, display:"flex",flexDirection:"column",justifyContent:"center"}}>
+              <div style={{fontSize:11,fontWeight:800,opacity:.8,letterSpacing:.7,marginBottom:8}}>LÍQUIDO GLOBAL A PAGAR</div>
+              <div style={{fontSize:32,fontWeight:900}}>{BRL(totalLiquidoGeral)}</div>
+            </Card>
+            <Card style={{padding:22, textAlign:"center", flex: 1, display:"flex",flexDirection:"column",justifyContent:"center"}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#6B7280",letterSpacing:.7,marginBottom:8}}>FUNCIONÁRIOS ATIVOS</div>
+              <div style={{fontSize:28,fontWeight:900,color:"#111"}}>{funcionarios.filter(f=>f.active).length}</div>
+            </Card>
+          </div>
+
+          <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 260 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Vales Lançados (Mês Atual)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
+              {valesMesAtual.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum vale recente</div>
+              ) : (
+                valesMesAtual.map(v => (
+                  <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: "1px solid #F3F4F6", fontSize: 13 }}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}><div style={{ fontWeight: 800, color: "#111" }}>{v.funcName}</div><div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 1 }}>{fmtD(v.date)}</div></div>
+                    <div style={{ fontWeight: 900, color: "#D97706", whiteSpace: "nowrap" }}>{BRL(v.value)}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </Card>
-          <Card style={{padding:22, textAlign:"center"}}>
-            <div style={{fontSize:11,fontWeight:800,color:"#6B7280",letterSpacing:.7,marginBottom:8}}>FUNCIONÁRIOS ATIVOS</div>
-            <div style={{fontSize:28,fontWeight:900,color:"#111"}}>{funcionarios.filter(f=>f.active).length}</div>
-            <Users size={16} color="#059669" style={{marginTop:8, opacity:0.5}}/>
-          </Card>
-          <Card style={{padding:22, textAlign:"center"}}>
-            <div style={{fontSize:11,fontWeight:800,color:"#6B7280",letterSpacing:.7,marginBottom:8}}>SOMA DE VALES / CONSUMOS</div>
-            <div style={{fontSize:24,fontWeight:900,color:"#D97706"}}>{BRL(totalValesGeral)}</div>
-            <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Abatidos do sistema</div>
+
+          <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 260 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Consumo por Funcionário</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
+              {consumosAtivos.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum consumo registrado</div>
+              ) : (
+                consumosAtivos.map(c => (
+                  <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: "1px solid #F3F4F6", fontSize: 13 }}>
+                    <div style={{ fontWeight: 800, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.funcName}</div>
+                    <div style={{ fontWeight: 900, color: "#4F46E5", whiteSpace: "nowrap" }}>{BRL(c.value)}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </Card>
         </div>
 
@@ -325,8 +550,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         {tab === "funcionarios" ? (
           <div>
             {/* Filtros */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
-              <div style={{ position: "relative", flex: 1, minWidth: 250 }}>
+            <div className="search-bar-container">
+              <div className="search-input-wrapper">
                 <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#9CA3AF"}}/>
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar funcionário..." style={{ width:"100%",padding:"11px 12px 11px 36px",borderRadius:12,border:"1px solid #E5E7EB",fontSize:14,background:"#fff",fontFamily:"inherit",outline:"none" }}/>
               </div>
@@ -338,14 +563,14 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
             {/* Tabela de Funcionários */}
             <Card style={{padding:0}}>
-              <div style={{ width: "100%", overflowX: "auto" }}>
+              <div className="table-responsive">
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                   <thead>
                     <tr style={{background:"#F9FAFB"}}>
                       <th style={{padding:"11px 16px 11px 20px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>FUNCIONÁRIO</th>
                       <th style={{padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>SALÁRIO BASE</th>
-                      <th style={{padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>LANÇAR (DATA, VALOR E TIPO)</th>
-                      <th style={{padding:"11px 16px",textAlign:"center",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>DADOS</th>
+                      <th style={{padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>LANÇAR VALE (DATA E VALOR)</th>
+                      <th style={{padding:"11px 16px",textAlign:"center",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>DETALHE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -356,9 +581,13 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                             <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#10B981)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
                             <div>
                               <div style={{fontWeight: 900, color: "#111", fontSize: 14}}>{f.name} {!f.active && <span style={{fontSize:10,color:"#DC2626",fontWeight:800,marginLeft:4}}>(Inativo)</span>}</div>
-                              <div style={{display:"flex", gap:4, marginTop:4}}>
-                                {f.hasPayslip && <Chip bg="#E0E7FF" color="#4338CA"><FileText size={10}/> Contracheque</Chip>}
-                                {f.pixKey && <Chip bg="#ECFEFF" color="#0891B2"><DollarSign size={10}/> PIX</Chip>}
+                              <div style={{display:"flex", gap:6, marginTop:6, alignItems: "center"}}>
+                                {f.hasPayslip && <FileText size={14} color="#059669" title="Possui Contracheque" />}
+                                {f.pixKey ? (
+                                  <span style={{fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 6px", borderRadius: 4}}>PIX: <b>{f.pixKey}</b></span>
+                                ) : (
+                                  <span style={{fontSize: 11, color: "#DC2626", background: "#FEE2E2", padding: "2px 6px", borderRadius: 4, display: "flex", alignItems: "center", gap: 3}} title="Sem chave PIX cadastrada"><AlertCircle size={11} /> Sem PIX</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -366,7 +595,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                         <td style={{padding:"12px 16px", fontWeight: 800, color: "#374151"}}>{BRL(f.salary)}</td>
                         <td style={{padding:"12px 16px"}}><InlineRowInputs funcId={f.id} onAddEntry={handleAddEntry} /></td>
                         <td style={{padding:"12px 16px", textAlign: "center"}}>
-                          <button onClick={() => setModalData(f)} style={{ background:"none",border:"none",color:"#6B7280",cursor:"pointer",padding:6,borderRadius:6, transition:"background 0.2s" }} title="Editar Informações"><Edit size={16}/></button>
+                          <button onClick={() => setSelId(f.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "1px solid #E5E7EB", background: "#fff", color: "#059669", cursor: "pointer", fontFamily: "inherit" }}>Ver <ChevronRight size={12} /></button>
                         </td>
                       </tr>
                     ))}
@@ -386,12 +615,18 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
               return (
                 <div key={monthKey} style={{ marginBottom: 40 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 900, color: "#111", borderBottom: "2px solid #E5E7EB", paddingBottom: 8, marginBottom: 20 }}>
-                    {monthName} de {year} <span style={{fontSize: 14, color: "#059669", float: "right"}}>Total: {BRL(monthTotalLiquido)}</span>
-                  </h2>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #E5E7EB", paddingBottom: 8, marginBottom: 20 }}>
+                    <h2 style={{ fontSize: 20, fontWeight: 900, color: "#111", margin: 0 }}>
+                      {monthName} de {year}
+                    </h2>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <span style={{fontSize: 16, fontWeight: 900, color: "#059669"}}>Total: {BRL(monthTotalLiquido)}</span>
+                      <Btn variant="success" onClick={() => exportXLSX(monthKey, fList)} style={{ padding: "6px 12px", fontSize: 12 }}><Download size={14} /> XLSX</Btn>
+                    </div>
+                  </div>
                   
                   <Card style={{ padding: 0, borderLeft: "4px solid #059669" }}>
-                    <div className="table-responsive" style={{overflowX: "auto"}}>
+                    <div className="table-responsive">
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                         <thead>
                           <tr style={{ background: "#FAFAFA", borderBottom: "2px solid #E5E7EB" }}>
@@ -403,12 +638,19 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                         <tbody>
                           {fList.map(f => (
                             <tr key={f.key} style={{ borderTop: "1px solid #F3F4F6" }}>
-                              <td style={{ padding: "12px 16px", fontWeight: 800, color: "#111" }}>{f.name}</td>
+                              <td style={{ padding: "12px 16px" }}>
+                                <div style={{fontWeight: 800, color: "#111"}}>{f.name}</div>
+                                {f.pixKey ? (
+                                  <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>PIX: {f.pixKey}</div>
+                                ) : (
+                                  <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>
+                                )}
+                              </td>
                               <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF" }}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.consumos > 0 ? "#4F46E5" : "#9CA3AF" }}>{f.consumos > 0 ? `- ${BRL(f.consumos)}` : "R$ 0,00"}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 900, color: "#059669", fontSize: 14 }}>{BRL(f.liquido)}</td>
-                              <td style={{ padding: "12px 16px" }}><StatusSel value={f.status} onChange={v => handleChangeStatus(f.key, v)} /></td>
+                              <td style={{ padding: "12px 16px" }}><StatusSel value={f.status} onChange={v => handleUpdateFolhaExtra(f.key, { status: v })} /></td>
                             </tr>
                           ))}
                         </tbody>
@@ -420,7 +662,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
             })}
           </div>
         )}
-
+        </>
+      )}
       </main>
 
       {modalData && (
