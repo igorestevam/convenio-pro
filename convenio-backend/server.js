@@ -42,7 +42,7 @@ const EntrySchema = new mongoose.Schema({ id: String, date: String, value: Numbe
 
 const FuncionarioSchema = new mongoose.Schema({
   id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
-  name: String, salary: Number, consumo: { type: Number, default: 0 }, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
+  name: String, email: String, phone: String, salary: Number, consumo: { type: Number, default: 0 }, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
 });
 
 const FolhaExtraSchema = new mongoose.Schema({
@@ -139,10 +139,10 @@ app.get('/api/funcionarios', authMiddleware, async (req, res) => res.json(await 
 app.post('/api/funcionarios', authMiddleware, async (req, res) => res.json(await (new Funcionario({ ...req.body, empresaId: req.empresa.id })).save()));
 
 app.put('/api/funcionarios/:id', authMiddleware, async (req, res) => {
-  const { name, salary, consumo, hasPayslip, pixKey, active } = req.body;
+  const { name, salary, consumo, hasPayslip, pixKey, active, email, phone } = req.body;
   const f = await Funcionario.findOneAndUpdate(
     { id: req.params.id, empresaId: req.empresa.id },
-    { name, salary, consumo, hasPayslip, pixKey, active },
+    { name, salary, consumo, hasPayslip, pixKey, active, email, phone },
     { new: true }
   );
   if (!f) return res.status(404).json({ erro: 'Não encontrado' });

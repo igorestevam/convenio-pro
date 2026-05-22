@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight } from "lucide-react";
+import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
 import * as XLSX from "xlsx";
 
 /* ─── API BASE URL ─── */
@@ -125,7 +125,7 @@ function InlineRowInputs({ funcId, onAddEntry }) {
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       <input type="date" value={dt} onChange={e => setDt(e.target.value)} style={{ ...inpBase, width: 125 }} />
-      <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="R$ 0,00" style={{ ...inpBase, width: 85, textAlign: "right" }} />
+      <input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLancar()} placeholder="R$ 0,00" style={{ ...inpBase, width: 85, textAlign: "right" }} />
       <button onClick={handleLancar} disabled={!val} style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, background: val ? "linear-gradient(135deg, #059669, #10B981)" : "#E5E7EB", color: val ? "#fff" : "#9CA3AF", border: "none", cursor: val ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
         <Plus size={14} /> Lançar Vale
       </button>
@@ -177,6 +177,8 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
               </div>
               <div style={{ display: "flex", gap: 14, marginTop: 5, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, color: "#6B7280" }}>Salário Base: <b>{BRL(func.salary)}</b></span>
+                {func.email && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Mail size={11} />{func.email}</span>}
+                {func.phone && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Phone size={11} />{func.phone}</span>}
                 {func.pixKey && <span style={{ fontSize: 12, color: "#6B7280" }}>PIX: <b>{func.pixKey}</b></span>}
                 {func.hasPayslip && <span style={{ fontSize: 12, color: "#059669" }}>Contracheque: <b>Sim</b></span>}
               </div>
@@ -189,7 +191,7 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
         <div style={{ fontSize: 14, fontWeight: 800, color: "#111", marginBottom: 14 }}>Novo Vale (Adiantamento)</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div><Lbl>DATA</Lbl><input type="date" value={dt} onChange={e => setDt(e.target.value)} style={{ ...inpBase, width: 140 }} /></div>
-          <div><Lbl>VALOR (R$)</Lbl><input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="0,00" style={{ ...inpBase, width: 120 }} /></div>
+          <div><Lbl>VALOR (R$)</Lbl><input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLancar()} placeholder="0,00" style={{ ...inpBase, width: 120 }} /></div>
           <div style={{ marginTop: 21 }}><Btn onClick={handleLancar} disabled={!val}><Plus size={14} /> Lançar Vale</Btn></div>
         </div>
       </Card>
@@ -229,12 +231,14 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
 
 /* ─── Modais ─── */
 function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
-  const [form, setForm] = useState(data || { name: "", salary: "", hasPayslip: true, pixKey: "", active: true });
+  const [form, setForm] = useState(
+    isEdit ? data : { name: "", salary: "", email: "", phone: "", hasPayslip: true, pixKey: "", active: true }
+  );
   const canDelete = isEdit && data.entries && data.entries.length === 0;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
-      <Card style={{ width: "100%", maxWidth: 420, padding: 28 }}>
+      <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>{isEdit ? "Editar Funcionário" : "Novo Funcionário"}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X size={20} /></button>
@@ -242,6 +246,10 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
           <div><Lbl>NOME DO FUNCIONÁRIO *</Lbl><Inp value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="Ex: João da Silva" /></div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}><Lbl>E-MAIL</Lbl><Inp type="email" value={form.email || ""} onChange={v => setForm({ ...form, email: v })} placeholder="email@empresa.com" /></div>
+            <div style={{ flex: 1 }}><Lbl>TELEFONE</Lbl><Inp value={form.phone || ""} onChange={v => setForm({ ...form, phone: v })} placeholder="(00) 00000-0000" /></div>
+          </div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}><Lbl>SALÁRIO BASE (R$) *</Lbl><Inp type="number" value={form.salary} onChange={v => setForm({ ...form, salary: v })} placeholder="1500" /></div>
             <div style={{ flex: 1 }}><Lbl>CHAVE PIX</Lbl><Inp value={form.pixKey} onChange={v => setForm({ ...form, pixKey: v })} placeholder="CPF, E-mail ou Telefone" /></div>
@@ -254,17 +262,19 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
                 <option value="SIM">Sim</option><option value="NAO">Não</option>
               </select>
             </div>
-            {isEdit && (
-              <div style={{ flex: 1 }}>
-                <Lbl>STATUS</Lbl>
-                <select value={form.active ? "ATIVO" : "INATIVO"} onChange={e => setForm({...form, active: e.target.value === "ATIVO"})} style={{ ...inpBase, width: "100%", padding: "10px", fontWeight: 700, color: form.active ? "#059669" : "#DC2626" }}>
-                  <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
-                </select>
-              </div>
-            )}
           </div>
         </div>
 
+        {isEdit && (
+          <div style={{ marginBottom: 20 }}>
+            <Lbl>STATUS DO FUNCIONÁRIO</Lbl>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setForm({ ...form, active: true })} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", border: `2px solid ${form.active ? "#059669" : "#E5E7EB"}`, background: form.active ? "#D1FAE5" : "#FAFAFA", color: form.active ? "#059669" : "#6B7280" }}>Ativo</button>
+              <button onClick={() => setForm({ ...form, active: false })} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", border: `2px solid ${!form.active ? "#DC2626" : "#E5E7EB"}`, background: !form.active ? "#FEE2E2" : "#FAFAFA", color: !form.active ? "#DC2626" : "#6B7280" }}>Inativo</button>
+            </div>
+          </div>
+        )}
+        
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           {isEdit && (
             canDelete ? (
@@ -294,7 +304,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
   const [search, setSearch] = useState("");
   const [showActive, setShowActive] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
-  const [modalData, setModalData] = useState(null);
+  const [editingFuncionario, setEditingFuncionario] = useState(null);
+  const [showNewFuncionarioModal, setShowNewFuncionarioModal] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
@@ -392,7 +403,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         showToast("Funcionário criado!");
       } catch (err) { showToast("Erro ao criar", "error"); }
     }
-    setModalData(null);
+    setEditingFuncionario(null);
+    setShowNewFuncionarioModal(false);
   };
 
   const handleDeleteFunc = async (id) => {
@@ -400,7 +412,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       await fetchAPI(`/funcionarios/${id}`, { method: 'DELETE' });
       setFuncionarios(p => p.filter(f => f.id !== id));
       showToast("Funcionário excluído!");
-      setModalData(null);
+      setEditingFuncionario(null);
     } catch (err) { showToast("Erro ao excluir", "error"); }
   };
 
@@ -481,11 +493,11 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Users size={12} color="#4B5563" />
+                  <User size={12} color="#4B5563" />
                 </div>
                 {empresaNome || empresaEmail}
               </div>
-              <Btn onClick={() => setModalData({})}><Plus size={15} /> Novo Funcionário</Btn>
+              <Btn onClick={() => setShowNewFuncionarioModal(true)}><Plus size={15} /> Novo Funcionário</Btn>
               <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
             </>
           )}
@@ -494,7 +506,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
       <main style={{padding:24,maxWidth:1400,margin:"0 auto"}}>
       {selId && funcData ? (
-        <FuncionarioDetail func={funcData} folhaStatus={folhaStatus} onAddEntry={handleAddEntry} onDeleteEntry={handleDeleteEntry} onUpdateFolhaExtra={handleUpdateFolhaExtra} onOpenEdit={() => setModalData(funcData)} />
+        <FuncionarioDetail func={funcData} folhaStatus={folhaStatus} onAddEntry={handleAddEntry} onDeleteEntry={handleDeleteEntry} onUpdateFolhaExtra={handleUpdateFolhaExtra} onOpenEdit={() => setEditingFuncionario(funcData)} />
       ) : (
         <>
         {/* ── DASHBOARD INDICATORS & TABS ── */}
@@ -585,6 +597,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                             <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#10B981)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
                             <div>
                               <div style={{fontWeight: 900, color: "#111", fontSize: 14}}>{f.name} {!f.active && <span style={{fontSize:10,color:"#DC2626",fontWeight:800,marginLeft:4}}>(Inativo)</span>}</div>
+                              {f.phone && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{f.phone}</div>}
                               <div style={{display:"flex", gap:6, marginTop:6, alignItems: "center"}}>
                                 {f.hasPayslip && <FileText size={14} color="#059669" title="Possui Contracheque" />}
                                 {f.pixKey ? (
@@ -644,11 +657,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                             <tr key={f.key} style={{ borderTop: "1px solid #F3F4F6" }}>
                               <td style={{ padding: "12px 16px" }}>
                                 <div style={{fontWeight: 800, color: "#111"}}>{f.name}</div>
-                                {f.pixKey ? (
-                                  <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>PIX: {f.pixKey}</div>
-                                ) : (
-                                  <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>
-                                )}
+                                {(f.email || f.phone) && <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>{[f.email, f.phone].filter(Boolean).join(' / ')}</div>}
+                                {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>PIX: {f.pixKey}</div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
                               </td>
                               <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF" }}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}</td>
@@ -670,13 +680,20 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       )}
       </main>
 
-      {modalData && (
+      {showNewFuncionarioModal && (
         <FuncionarioModal 
-          data={Object.keys(modalData).length > 0 ? modalData : null} 
-          isEdit={Object.keys(modalData).length > 0} 
+          isEdit={false}
           onSave={handleSaveFunc} 
-          onDelete={handleDeleteFunc} 
-          onClose={() => setModalData(null)} 
+          onClose={() => setShowNewFuncionarioModal(false)} 
+        />
+      )}
+      {editingFuncionario && (
+        <FuncionarioModal
+          isEdit={true}
+          data={editingFuncionario}
+          onSave={handleSaveFunc}
+          onDelete={handleDeleteFunc}
+          onClose={() => setEditingFuncionario(null)}
         />
       )}
     </div>
