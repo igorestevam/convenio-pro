@@ -6,6 +6,7 @@ import {
   Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Lock, Edit, LayoutGrid
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import AppFooter from "./AppFooter";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
 const MONTHS = [
@@ -469,8 +470,26 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
 export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBack, onLogout }) {
   const [clients, setClients] = useState([]);
   const [fatExtras, setFatExtras] = useState({});
-  const [selId, setSelId] = useState(null);
-  const [tab, setTab] = useState("clientes");
+  
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (newPath) => {
+    window.history.pushState({}, '', newPath);
+    setPath(newPath);
+  };
+
+  const { tab, selId } = useMemo(() => {
+    const parts = path.split('/').filter(Boolean);
+    if (parts[1] === 'faturas') return { tab: 'faturas', selId: null };
+    if (parts[1] === 'cliente' && parts[2]) return { tab: 'clientes', selId: parts[2] };
+    return { tab: 'clientes', selId: null };
+  }, [path]);
 
   const [search, setSearch] = useState("");
   const [showActive, setShowActive] = useState(true);
@@ -481,8 +500,8 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
   const [editingClient, setEditingClient] = useState(null);
 
   // Filtros de ano e mês iniciam no momento atual
-  const [fy, setFy] = useState(() => String(new Date().getFullYear()));
-  const [fm, setFm] = useState(() => String(new Date().getMonth() + 1));
+  const [fy, setFy] = useState("all");
+  const [fm, setFm] = useState("all");
   const [fs, setFs] = useState("all");
   const [toast, setToast] = useState(null);
 
@@ -623,7 +642,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     try {
       await fetchAPI(`/clientes/${editingClient.id}`, { method: 'DELETE' });
       setClients(p => p.filter(c => c.id !== editingClient.id)); setEditingClient(null);
-      if (selId === editingClient.id) setSelId(null); showToast("Excluído com sucesso.");
+      if (selId === editingClient.id) navigate('/consumo'); showToast("Excluído com sucesso.");
     } catch (err) { showToast("Erro", "error"); }
   };
 
@@ -714,7 +733,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
         </div>
         
         <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {selId ? <Btn onClick={() => setSelId(null)} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
+          {selId ? <Btn onClick={() => navigate('/consumo')} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -803,7 +822,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
             {/* ABAS CLIENTES/FATURAS */}
             <div style={{ display: "inline-flex", gap: 2, background: "#E5E7EB", borderRadius: 12, padding: 4, marginBottom: 20 }}>
               {[{ id: "clientes", label: "Clientes", Icon: Users }, { id: "faturas", label: "Faturas", Icon: Receipt }].map(t => (
-                <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
+                <button key={t.id} onClick={() => navigate(`/consumo${t.id === 'faturas' ? '/faturas' : ''}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
               ))}
             </div>
 
@@ -819,10 +838,10 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
                     <Btn variant={showInactive ? "primary" : "secondary"} onClick={() => setShowInactive(!showInactive)} style={{ padding: "10px 14px", fontSize: 12 }}>Inativos</Btn>
                   </div>
                 </div>
-                <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={setSelId} onAddConsumo={addConsumo} onToast={showToast} />
+                <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={(id) => navigate(`/consumo/cliente/${id}`)} onAddConsumo={addConsumo} onToast={showToast} />
               </div>
             ) : (
-              <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={setSelId} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
+              <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={(id) => navigate(`/consumo/cliente/${id}`)} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
             )}
           </>
         )}
@@ -830,6 +849,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
 
       {showModal && <NewClientModal data={form} onChange={setForm} onConfirm={addClient} onClose={() => setShowModal(false)} />}
       {editingClient && <EditClientModal client={editingClient} onUpdate={updateClientInfo} onDelete={removeClient} onClose={() => setEditingClient(null)} />}
+        <AppFooter/>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AppFooter from "./AppFooter";
 
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
@@ -73,6 +74,7 @@ export default function Login({ onLogin }) {
           {isLogin ? "Não possui uma conta? " : "Já possui uma conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registre-se aqui" : "Faça login"}</span>
         </div>
       </Card>
+      <AppFooter/>
     </div>
   );
 }

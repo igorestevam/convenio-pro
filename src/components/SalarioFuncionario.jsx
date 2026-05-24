@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
 import * as XLSX from "xlsx";
+import AppFooter from "./AppFooter";
 
 /* ─── API BASE URL ─── */
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
@@ -295,9 +296,26 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 
 /* ─── Main App de Salários ─── */
 export default function SalarioFuncionario({ token, empresaEmail, empresaNome, onBack, onLogout }) {
-  const [tab, setTab] = useState("funcionarios");
-  const [selId, setSelId] = useState(null);
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (newPath) => {
+    window.history.pushState({}, '', newPath);
+    setPath(newPath);
+  };
   
+  const { tab, selId } = useMemo(() => {
+    const parts = path.split('/').filter(Boolean);
+    if (parts[1] === 'folhas') return { tab: 'folhas', selId: null };
+    if (parts[1] === 'funcionario' && parts[2]) return { tab: 'funcionarios', selId: parts[2] };
+    return { tab: 'funcionarios', selId: null };
+  }, [path]);
+
   const [funcionarios, setFuncionarios] = useState([]);
   const [folhaStatus, setFolhaStatus] = useState({});
 
@@ -489,7 +507,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           <div><div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Folha de Pagamento</div><div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de salários e vales</div></div>
         </div>
         <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {selId ? <Btn onClick={() => setSelId(null)} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
+          {selId ? <Btn onClick={() => navigate('/salario')} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -558,7 +576,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         {/* ── ABAS NAVEGAÇÃO ── */}
         <div style={{ display:"inline-flex",gap:2,background:"#E5E7EB",borderRadius:12,padding:4,marginBottom:20 }}>
           {[{id:"funcionarios",label:"Funcionários",Icon:Users},{id:"folhas", label:"Folha de Pagamento", Icon:FileText}].map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:9,border:"none",fontFamily:"inherit",fontSize:13,fontWeight:800,cursor:"pointer",background:tab===t.id?"#fff":"transparent",color:tab===t.id?"#111":"#6B7280",boxShadow:tab===t.id?"0 1px 4px rgba(0,0,0,.1)":"none",transition:"all .15s" }}><t.Icon size={14}/>{t.label}</button>
+            <button key={t.id} onClick={()=>navigate(`/salario${t.id === 'folhas' ? '/folhas' : ''}`)} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:9,border:"none",fontFamily:"inherit",fontSize:13,fontWeight:800,cursor:"pointer",background:tab===t.id?"#fff":"transparent",color:tab===t.id?"#111":"#6B7280",boxShadow:tab===t.id?"0 1px 4px rgba(0,0,0,.1)":"none",transition:"all .15s" }}><t.Icon size={14}/>{t.label}</button>
           ))}
         </div>
 
@@ -612,7 +630,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                         <td style={{padding:"12px 16px", fontWeight: 800, color: "#374151"}}>{BRL(f.salary)}</td>
                         <td style={{padding:"12px 16px"}}><InlineRowInputs funcId={f.id} onAddEntry={handleAddEntry} /></td>
                         <td style={{padding:"12px 16px", textAlign: "center"}}>
-                          <button onClick={() => setSelId(f.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "1px solid #E5E7EB", background: "#fff", color: "#059669", cursor: "pointer", fontFamily: "inherit" }}>Ver <ChevronRight size={12} /></button>
+                          <button onClick={() => navigate(`/salario/funcionario/${f.id}`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "1px solid #E5E7EB", background: "#fff", color: "#059669", cursor: "pointer", fontFamily: "inherit" }}>Ver <ChevronRight size={12} /></button>
                         </td>
                       </tr>
                     ))}
@@ -696,6 +714,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           onClose={() => setEditingFuncionario(null)}
         />
       )}
+      <AppFooter/>
     </div>
   );
 }

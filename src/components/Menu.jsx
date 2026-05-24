@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { LogOut, Receipt, Briefcase, Settings, X, Edit3, Shield, User as UserIcon } from "lucide-react";
 import ConsumoCliente from "./ConsumoCliente";
 import SalarioFuncionario from "./SalarioFuncionario";
+import AppFooter from "./AppFooter";
 
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
@@ -181,15 +182,28 @@ function ProfileModal({ token, initialName, initialEmail, onClose, onLogout }) {
 
 /* ─── Menu Principal (O Hub) ─── */
 export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
-  const [activeTab, setActiveTab] = useState('home');
+  const [path, setPath] = useState(window.location.pathname);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  useEffect(() => {
+    const handlePopState = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (newPath) => {
+    window.history.pushState({}, '', newPath);
+    setPath(newPath);
+  };
+
+  const activeTab = path.startsWith('/consumo') ? 'consumo' : path.startsWith('/salario') ? 'salario' : 'home';
+
   if (activeTab === 'consumo') {
-    return <ConsumoCliente token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => setActiveTab('home')} onLogout={onLogout} />;
+    return <ConsumoCliente token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => navigate('/')} onLogout={onLogout} />;
   }
 
   if (activeTab === 'salario') {
-    return <SalarioFuncionario token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => setActiveTab('home')} onLogout={onLogout} />;
+    return <SalarioFuncionario token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => navigate('/')} onLogout={onLogout} />;
   }
 
   return (
@@ -230,7 +244,7 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
         <p style={{color: "#6B7280", marginBottom: 32}}>O que você deseja gerenciar hoje?</p>
 
         <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24}}>
-          <Card style={{cursor: "pointer", padding: 32, border: "2px solid transparent"}} onClick={() => setActiveTab('consumo')} className="menu-card">
+          <Card style={{cursor: "pointer", padding: 32, border: "2px solid transparent"}} onClick={() => navigate('/consumo')} className="menu-card">
             <div style={{width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20}}>
               <Receipt size={28} color="#fff" />
             </div>
@@ -238,7 +252,7 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
             <p style={{color: "#6B7280", fontSize: 14, lineHeight: 1.5}}>Gerencie as faturas em aberto, lance consumos diários e acompanhe o ticket médio dos convênios.</p>
           </Card>
 
-          <Card style={{cursor: "pointer", padding: 32, border: "2px solid transparent"}} onClick={() => setActiveTab('salario')} className="menu-card">
+          <Card style={{cursor: "pointer", padding: 32, border: "2px solid transparent"}} onClick={() => navigate('/salario')} className="menu-card">
             <div style={{width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20}}>
               <Briefcase size={28} color="#fff" />
             </div>
@@ -253,6 +267,7 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
         .menu-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; border: 2px solid #E5E7EB; }
         @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
       `}</style>
+      <AppFooter/>
     </div>
   );
 }
