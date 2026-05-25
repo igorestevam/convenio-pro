@@ -5,7 +5,8 @@ import {
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
   Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Lock, Edit, LayoutGrid
 } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
@@ -274,6 +275,23 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
 function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpenEdit }) {
   const { client, faturas, totalAberto, totalGeralCliente } = data;
 
+  // ESTADOS PARA OS FILTROS DE ANO E MÊS
+  const [fy, setFy] = useState("all");
+  const [fm, setFm] = useState("all");
+
+  // Extrair os anos disponíveis do histórico do cliente
+  const years = useMemo(() => [...new Set(faturas.map(f => f.monthYear.split("-")[0]))].sort().reverse(), [faturas]);
+
+  // Filtrar as faturas/consumos do cliente com base na seleção
+  const filteredFaturas = useMemo(() => {
+    return faturas.filter(f => {
+      const [y, m] = f.monthYear.split("-");
+      if (fy !== "all" && y !== fy) return false;
+      if (fm !== "all" && +m !== +fm) return false;
+      return true;
+    });
+  }, [faturas, fy, fm]);
+
   const ticketMedio = client.consumos.length > 0 ? totalGeralCliente / client.consumos.length : 0;
 
   const chartData = [...faturas].reverse().map(f => {
@@ -284,6 +302,8 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
   const handleDeleteConsumo = (consumoId) => {
     if (window.confirm("Tem certeza que deseja apagar este consumo? Esta ação não pode ser desfeita.")) onDeleteConsumo(client.id, consumoId);
   };
+
+  const selStyle = { padding: "8px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer", outline: "none", color: "#374151", fontWeight: 600 };
 
   return (
     <div>
@@ -336,10 +356,29 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
       </Card>
 
       <div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#111", marginBottom: 14 }}>Faturas e lançamentos</div>
-        {faturas.length === 0 ? (
-          <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 40, textAlign: "center", color: "#9CA3AF" }}><Receipt size={32} style={{ opacity: .25, marginBottom: 10 }} /><div>Nenhum lançamento registrado</div></div>
-        ) : faturas.map(f => (
+        {/* BARRA DE TÍTULO E FILTROS */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#111" }}>Faturas e lançamentos</div>
+          
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <select value={fy} onChange={e => setFy(e.target.value)} style={selStyle}>
+              <option value="all">Todos os anos</option>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select value={fm} onChange={e => setFm(e.target.value)} style={selStyle}>
+              <option value="all">Todos os meses</option>
+              {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* LISTAGEM FILTRADA */}
+        {filteredFaturas.length === 0 ? (
+          <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 40, textAlign: "center", color: "#9CA3AF" }}>
+            <Receipt size={32} style={{ opacity: .25, marginBottom: 10 }} />
+            <div>Nenhum lançamento encontrado para este período</div>
+          </div>
+        ) : filteredFaturas.map(f => (
           <Card key={f.key} style={{ marginBottom: 14, padding: 0 }}>
             <div style={{ padding: "14px 18px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -680,22 +719,117 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
   const setFaturaStatus = (key, status) => updateFatExtraAPI(key, { status });
   const setFaturaMethod = (key, method) => updateFatExtraAPI(key, { method });
 
-  const exportXLSX = fatura => {
-    const wb = XLSX.utils.book_new();
-    const rows = [["Cliente", fatura.clientName], ["E-mail", fatura.clientEmail], ["Telefone", fatura.clientPhone], ["Mês/Ano", mLabel(fatura.monthYear)], ["Método", fatura.method], ["Status", fatura.status], ["Total", fatura.total], [], ["#", "Data", "Valor (R$)"]];
-    [...fatura.consumos].sort((a, b) => a.date.localeCompare(b.date)).forEach((c, i) => rows.push([i + 1, fmtD(c.date), c.value]));
-    rows.push(["", "TOTAL", fatura.total]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Fatura");
-    XLSX.writeFile(wb, `fatura-${fatura.clientName.replace(/\s+/g, "-")}-${fatura.monthYear}.xlsx`);
+  const exportXLSX = async (fatura) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Fatura Detalhada');
+
+    // 1. Configura a largura das colunas
+    worksheet.columns = [
+      { width: 15 }, // Col A
+      { width: 30 }, // Col B
+      { width: 20 }  // Col C
+    ];
+
+    // 2. Cabeçalho de Informações do Cliente
+    worksheet.addRow(['Cliente', fatura.clientName]);
+    worksheet.addRow(['E-mail', fatura.clientEmail || 'Não informado']);
+    worksheet.addRow(['Telefone', fatura.clientPhone || 'Não informado']);
+    worksheet.addRow(['Mês/Ano', mLabel(fatura.monthYear)]);
+    worksheet.addRow(['Método', fatura.method]);
+    worksheet.addRow(['Status', fatura.status]);
+    worksheet.addRow(['Total', BRL(fatura.total)]);
+
+    // Formata as informações (Coluna A em Negrito)
+    for (let i = 1; i <= 7; i++) {
+      worksheet.getCell(`A${i}`).font = { bold: true, color: { argb: 'FF374151' } };
+      worksheet.getCell(`B${i}`).alignment = { horizontal: 'left' };
+    }
+
+    worksheet.addRow([]); // Linha 8 vazia para dar respiro
+
+    // 3. Cabeçalho da Tabela de Consumos (Linha 9)
+    const headerRow = worksheet.addRow(['#', 'Data do Consumo', 'Valor (R$)']);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // Letra Branca
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Fundo Roxo ConvênioPro
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+    });
+
+    // 4. Inserindo os Dados (com bordas e formato moeda)
+    [...fatura.consumos].sort((a, b) => a.date.localeCompare(b.date)).forEach((c, i) => {
+      const row = worksheet.addRow([i + 1, fmtD(c.date), c.value]);
+      row.eachCell((cell, colNumber) => {
+        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        cell.alignment = { horizontal: 'center' };
+        if (colNumber === 3) cell.numFmt = '"R$" #,##0.00'; // Formato de moeda contábil
+      });
+    });
+
+    // 5. Linha de Total Final Destacada
+    const totalRow = worksheet.addRow(['', 'TOTAL DA FATURA', fatura.total]);
+    totalRow.getCell(2).font = { bold: true, color: { argb: 'FF111111' } };
+    totalRow.getCell(2).alignment = { horizontal: 'right' };
+    totalRow.getCell(3).font = { bold: true, color: { argb: 'FF15803D' } }; // Valor em Verde
+    totalRow.getCell(3).numFmt = '"R$" #,##0.00';
+    totalRow.getCell(2).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+    totalRow.getCell(3).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+    // 6. Gerar e Baixar
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `fatura-${fatura.clientName.replace(/\s+/g, "-")}-${fatura.monthYear}.xlsx`);
   };
 
-  const exportBatch = () => {
-    const wb = XLSX.utils.book_new();
-    const rows = [["Mês/Ano", "Cliente", "E-mail", "Telefone", "Lançamentos", "Método", "Status", "Total (R$)"]];
-    filteredFaturas.forEach(f => rows.push([mLabel(f.monthYear), f.clientName, f.clientEmail, f.clientPhone, f.count, f.method, f.status, f.total]));
-    rows.push(["", "", "", "", "", "", "TOTAL", filteredTotal]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Faturas");
-    XLSX.writeFile(wb, `faturas-${fy}-${fm}.xlsx`);
+  const exportBatch = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Fechamento de Faturas');
+
+    // 1. Configura as colunas
+    worksheet.columns = [
+      { header: 'Mês/Ano', key: 'mes', width: 15 },
+      { header: 'Cliente', key: 'cliente', width: 35 },
+      { header: 'E-mail', key: 'email', width: 30 },
+      { header: 'Telefone', key: 'tel', width: 18 },
+      { header: 'Lançamentos', key: 'lanc', width: 15 },
+      { header: 'Método', key: 'metodo', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Total (R$)', key: 'total', width: 20 }
+    ];
+
+    // 2. Formata o Cabeçalho (Roxo com letras brancas)
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+    });
+
+    // 3. Adiciona os Dados
+    filteredFaturas.forEach(f => {
+      const row = worksheet.addRow([
+        mLabel(f.monthYear), f.clientName, f.clientEmail || "-", f.clientPhone || "-",
+        f.count, f.method, f.status, f.total
+      ]);
+      row.eachCell((cell, colNumber) => {
+        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        cell.alignment = { horizontal: colNumber === 2 ? 'left' : 'center' };
+        if (colNumber === 8) cell.numFmt = '"R$" #,##0.00';
+      });
+    });
+
+    // 4. Linha de Total Geral (Somatório da Tabela)
+    const totalRow = worksheet.addRow(['', '', '', '', '', '', 'TOTAL GERAL:', filteredTotal]);
+    totalRow.getCell(7).font = { bold: true };
+    totalRow.getCell(7).alignment = { horizontal: 'right' };
+    totalRow.getCell(8).font = { bold: true, color: { argb: 'FF15803D' } };
+    totalRow.getCell(8).numFmt = '"R$" #,##0.00';
+    totalRow.getCell(7).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+    totalRow.getCell(8).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+    // 5. Gerar e Baixar
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `faturas-${fy}-${fm}.xlsx`);
   };
 
   /* ── Render ── */

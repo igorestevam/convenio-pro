@@ -43,15 +43,6 @@ function Btn({ children, onClick, disabled = false, variant = "primary", style =
   );
 }
 
-function StatusSel({ value, onChange }) {
-  const s = STATUS_CFG[value] || STATUS_CFG.PENDENTE;
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)} style={{ background: s.bg, color: s.color, border: "none", borderRadius: 99, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", outline: "none", fontFamily: "inherit" }}>
-      {Object.keys(STATUS_CFG).map(k => <option key={k} value={k}>{k}</option>)}
-    </select>
-  );
-}
-
 function Lbl({ children }) { return <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .6, marginBottom: 6 }}>{children}</div>; }
 function Inp({ value, onChange, placeholder, type="text", style={} }) { return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{ width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10, border:"1px solid #E5E7EB",fontSize:14,background:"#fff",outline:"none", fontFamily:"inherit", color:"#111827", ...style }} />; }
 
@@ -139,6 +130,8 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
   const [dt, setDt] = useState(todayStr());
   const [val, setVal] = useState("");
 
+  if (!func) return null;
+
   const handleLancar = () => {
     const v = parseFloat(String(val).replace(",", "."));
     if (!val || isNaN(v) || v <= 0) return alert("Informe um valor válido.");
@@ -160,7 +153,8 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
       const valesTotal = valesList.reduce((s, x) => s + x.value, 0);
       const fExtra = folhaStatus[key] || {};
       const consumo = fExtra.consumo || 0;
-      return { month, key, valesTotal, valesList, consumo };
+      const status = fExtra.status || "PENDENTE";
+      return { month, key, valesTotal, valesList, consumo, status };
     });
   }, [func.entries, folhaStatus, func.id]);
 
@@ -197,39 +191,86 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
         </div>
       </Card>
 
-      {grouped.map(mData => (
-        <Card key={mData.month} style={{ marginBottom: 14, padding: 0 }}>
-          <div style={{ padding: "14px 18px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>{MONTHS[parseInt(mData.month.split("-")[1]) - 1]} / {mData.month.split("-")[0]}</span>
-            <div style={{ display: "flex", gap: 16, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 6 }}>Vales: <b style={{color: "#D97706"}}>{BRL(mData.valesTotal)}</b></span>
-              <InlineConsumo value={mData.consumo} onSave={v => onUpdateFolhaExtra(mData.key, { consumo: v })} />
+      {grouped.map(mData => {
+        const isPago = mData.status === "PAGO";
+        const base = Number(func.salary) || 0;
+        
+        // MATEMÁTICA DEFINIDA:
+        const liquido = base - mData.valesTotal - mData.consumo; // Líquido a pagar se ainda estiver pendente
+        const totalPago = base - mData.consumo;                  // Total que ele ganhou pelo mês (vales já foram recebidos antes)
+
+        return (
+          <Card key={mData.month} style={{ marginBottom: 14, padding: 0 }}>
+            {/* Cabeçalho do Mês */}
+            <div style={{ padding: "14px 18px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>{MONTHS[parseInt(mData.month.split("-")[1]) - 1]} / {mData.month.split("-")[0]}</span>
+                {isPago ? <Chip color="#15803D" bg="#DCFCE7"><CheckCircle2 size={12}/> Pago</Chip> : <Chip color="#D97706" bg="#FEF3C7"><Clock size={12}/> Pendente</Chip>}
+              </div>
+              <div style={{ display: "flex", gap: 16, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 6 }}>Vales: <b style={{color: "#D97706"}}>{BRL(mData.valesTotal)}</b></span>
+                <InlineConsumo value={mData.consumo} onSave={v => onUpdateFolhaExtra(mData.key, { consumo: v })} />
+                <div style={{ width: 1, height: 20, background: "#E5E7EB", margin: "0 8px" }}></div>
+                {isPago ? (
+                   <button onClick={() => onUpdateFolhaExtra(mData.key, { status: "PENDENTE" })} style={{ background:"none", border:"none", color:"#9CA3AF", cursor:"pointer", fontSize: 12, fontWeight: 700, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }} title="Desfazer"><X size={14}/> Desfazer</button>
+                ) : (
+                   <Btn variant="primary" onClick={() => onUpdateFolhaExtra(mData.key, { status: "PAGO" })} style={{ padding: "6px 12px", fontSize: 11 }}><CheckCircle2 size={12}/> Marcar como Pago</Btn>
+                )}
+              </div>
             </div>
-          </div>
-          {mData.valesList.length > 0 ? (
-            <div className="table-responsive">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead><tr style={{ background: "#F9FAFB" }}>{["Data", "Vale (R$)", ""].map(h => (<th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: .5 }}>{h}</th>))}</tr></thead>
-                <tbody>
-                  {[...mData.valesList].sort((a,b) => b.date.localeCompare(a.date)).map(e => (
-                    <tr key={e.id} style={{ borderTop: "1px solid #F3F4F6" }}>
-                      <td style={{ padding: "10px 16px", color: "#374151", whiteSpace: "nowrap" }}>{fmtD(e.date)}</td>
-                      <td style={{ padding: "10px 16px", fontWeight: 800, color: "#D97706" }}>{BRL(e.value)}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right" }}><button onClick={() => { if(window.confirm("Excluir vale?")) onDeleteEntry(func.id, e.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, borderRadius: 6 }}><Trash2 size={13} /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            {/* Painel Matemático Explicativo */}
+            <div style={{ padding: "16px 20px", display: "flex", gap: 20, flexWrap: "wrap", borderBottom: mData.valesList.length > 0 ? "1px solid #F3F4F6" : "none" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, marginBottom: 6 }}>FECHAMENTO DO MÊS</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#6B7280"}}>Salário Base Bruto:</span> <span style={{fontWeight: 700}}>{BRL(base)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#4F46E5"}}>Consumos (Desconto):</span> <span style={{fontWeight: 700}}>- {BRL(mData.consumo)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13, opacity: isPago ? 0.3 : 1 }}><span style={{color: "#D97706"}}>Vales Retirados (Adiantamentos):</span> <span style={{fontWeight: 700}}>- {BRL(mData.valesTotal)}</span></div>
+              </div>
+              <div style={{ width: 1, background: "#E5E7EB" }}></div>
+              <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                 {isPago ? (
+                    <>
+                       <div style={{ fontSize: 11, fontWeight: 800, color: "#15803D", letterSpacing: .5 }}>TOTAL PAGO REFERENTE AO MÊS</div>
+                       <div style={{ fontSize: 28, fontWeight: 900, color: "#15803D" }}>{BRL(totalPago)}</div>
+                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Os vales não foram subtraídos deste total final porque representam um adiantamento do salário.</div>
+                    </>
+                 ) : (
+                    <>
+                       <div style={{ fontSize: 11, fontWeight: 800, color: "#D97706", letterSpacing: .5 }}>LÍQUIDO A PAGAR AGORA</div>
+                       <div style={{ fontSize: 28, fontWeight: 900, color: "#D97706" }}>{BRL(liquido)}</div>
+                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Abatendo os vales e os consumos do salário base.</div>
+                    </>
+                 )}
+              </div>
             </div>
-          ) : (
-            <div style={{ padding: "16px", textAlign: "center", color: "#9CA3AF", fontSize: 12 }}>Nenhum vale registrado neste mês.</div>
-          )}
-        </Card>
-      ))}
+
+            {mData.valesList.length > 0 && (
+              <div className="table-responsive">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead><tr style={{ background: "#F9FAFB" }}>{["Data", "Vale (R$)", ""].map(h => (<th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: .5 }}>{h}</th>))}</tr></thead>
+                  <tbody>
+                    {[...mData.valesList].sort((a,b) => b.date.localeCompare(a.date)).map(e => (
+                      <tr key={e.id} style={{ borderTop: "1px solid #F3F4F6" }}>
+                        <td style={{ padding: "10px 16px", color: "#374151", whiteSpace: "nowrap" }}>{fmtD(e.date)}</td>
+                        <td style={{ padding: "10px 16px", fontWeight: 800, color: "#D97706" }}>{BRL(e.value)}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          {!isPago && (
+                            <button onClick={() => { if(window.confirm("Excluir vale?")) onDeleteEntry(func.id, e.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, borderRadius: 6 }}><Trash2 size={13} /></button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 }
-
 /* ─── Modais ─── */
 function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
   const [form, setForm] = useState(
@@ -239,7 +280,7 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
-      <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease" }}>
+      <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>{isEdit ? "Editar Funcionário" : "Novo Funcionário"}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X size={20} /></button>
@@ -297,6 +338,9 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 /* ─── Main App de Salários ─── */
 export default function SalarioFuncionario({ token, empresaEmail, empresaNome, onBack, onLogout }) {
   const [path, setPath] = useState(window.location.pathname);
+
+  // Descobre automaticamente o nome do mês atual para os cards
+  const currentMonthName = MONTHS[new Date().getMonth()];
 
   useEffect(() => {
     const handlePopState = () => setPath(window.location.pathname);
@@ -406,7 +450,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
   /* ── Actions ── */
   const handleSaveFunc = async (data) => {
     const payload = { ...data, salary: Number(data.salary) };
-    delete payload.consumo; // Removido campo estático antigo
+    delete payload.consumo;
     if (data.id) {
       try {
         await fetchAPI(`/funcionarios/${data.id}`, { method: 'PUT', body: JSON.stringify(payload) });
@@ -456,6 +500,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify(data) });
       setFolhaStatus(p => ({ ...p, [key]: { ...(p[key] || {}), ...data } }));
       if (data.consumo !== undefined) showToast("Consumo alterado!");
+      if (data.status) showToast(data.status === "PAGO" ? "Folha paga!" : "Pagamento desfeito.");
     } catch (err) { showToast("Erro ao atualizar", "error"); }
   };
 
@@ -482,7 +527,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
   };
 
   return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#F4F3F0",minHeight:"100vh",color:"#111827"}}>
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#F4F3F0",minHeight:"100vh",color:"#111827", display: "flex", flexDirection: "column"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -497,17 +542,16 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         .search-bar-container { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
         .search-input-wrapper { position: relative; flex: 1; min-width: 250px; }
       `}</style>
-      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       
       {/* ── HEADER ── */}
       <header className="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Btn onClick={onBack} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}><ArrowLeft size={15} /> Menu</Btn>
+          <Btn onClick={() => selId ? navigate('/salario') : onBack()} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}><ArrowLeft size={15} /> {selId ? "Voltar" : "Menu"}</Btn>
           <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={18} color="#fff" /></div>
           <div><div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Folha de Pagamento</div><div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de salários e vales</div></div>
         </div>
         <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {selId ? <Btn onClick={() => navigate('/salario')} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
+          {!selId && (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -516,13 +560,13 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                 {empresaNome || empresaEmail}
               </div>
               <Btn onClick={() => setShowNewFuncionarioModal(true)}><Plus size={15} /> Novo Funcionário</Btn>
-              <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
             </>
           )}
+          <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
         </div>
       </header>
 
-      <main style={{padding:24,maxWidth:1400,margin:"0 auto"}}>
+      <main style={{padding:24,maxWidth:1400,margin:"0 auto", flex: 1, width: "100%"}}>
       {selId && funcData ? (
         <FuncionarioDetail func={funcData} folhaStatus={folhaStatus} onAddEntry={handleAddEntry} onDeleteEntry={handleDeleteEntry} onUpdateFolhaExtra={handleUpdateFolhaExtra} onOpenEdit={() => setEditingFuncionario(funcData)} />
       ) : (
@@ -541,7 +585,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           </div>
 
           <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 260 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Vales Lançados (Mês Atual)</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Vales Lançados - {currentMonthName}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
               {valesMesAtual.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum vale recente</div>
@@ -557,7 +601,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           </Card>
 
           <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 260 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Consumo por Funcionário</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Consumo por Funcionário - {currentMonthName}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
               {consumosAtivos.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum consumo registrado</div>
@@ -655,7 +699,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                       {monthName} de {year}
                     </h2>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <span style={{fontSize: 16, fontWeight: 900, color: "#059669"}}>Total: {BRL(monthTotalLiquido)}</span>
+                      <span style={{fontSize: 16, fontWeight: 900, color: "#059669"}}>Total a Pagar: {BRL(monthTotalLiquido)}</span>
                       <Btn variant="success" onClick={() => exportXLSX(monthKey, fList)} style={{ padding: "6px 12px", fontSize: 12 }}><Download size={14} /> XLSX</Btn>
                     </div>
                   </div>
@@ -676,13 +720,22 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                               <td style={{ padding: "12px 16px" }}>
                                 <div style={{fontWeight: 800, color: "#111"}}>{f.name}</div>
                                 {(f.email || f.phone) && <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>{[f.email, f.phone].filter(Boolean).join(' / ')}</div>}
-                                {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>PIX: {f.pixKey}</div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
+                                {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>Chave PIX: {f.pixKey}</div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
                               </td>
                               <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF" }}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.consumos > 0 ? "#4F46E5" : "#9CA3AF" }}>{f.consumos > 0 ? `- ${BRL(f.consumos)}` : "R$ 0,00"}</td>
-                              <td style={{ padding: "12px 16px", fontWeight: 900, color: "#059669", fontSize: 14 }}>{BRL(f.liquido)}</td>
-                              <td style={{ padding: "12px 16px" }}><StatusSel value={f.status} onChange={v => handleUpdateFolhaExtra(f.key, { status: v })} /></td>
+                              <td style={{ padding: "12px 16px", fontWeight: 900, color: f.status === "PAGO" ? "#15803D" : "#D97706", fontSize: 14 }}>{BRL(f.liquido)}</td>
+                              <td style={{ padding: "12px 16px" }}>
+                                {f.status === "PAGO" ? (
+                                  <div style={{display: "flex", gap: 8, alignItems: "center"}}>
+                                    <Chip color="#15803D" bg="#DCFCE7"><CheckCircle2 size={12}/> Pago</Chip>
+                                    <button onClick={() => handleUpdateFolhaExtra(f.key, { status: "PENDENTE" })} style={{background:"none", border:"none", color:"#9CA3AF", cursor:"pointer", display:"flex", padding: 4}} title="Desfazer"><X size={14}/></button>
+                                  </div>
+                                ) : (
+                                  <Btn variant="primary" onClick={() => handleUpdateFolhaExtra(f.key, { status: "PAGO" })} style={{padding: "6px 10px", fontSize: 11}}><CheckCircle2 size={12}/> Pagar</Btn>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -714,6 +767,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           onClose={() => setEditingFuncionario(null)}
         />
       )}
+      
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <AppFooter/>
     </div>
   );

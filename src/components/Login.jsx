@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import AppFooter from "./AppFooter";
+import AppFooter from "./AppFooter"; // <-- Importação do seu novo Footer
 
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
@@ -19,8 +19,8 @@ function Lbl({ children }) {
   return <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .6, marginBottom: 6 }}>{children}</div>;
 }
 
-function Inp({ value, onChange, placeholder, type="text", style={} }) {
-  return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{ width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10, border:"1px solid #E5E7EB",fontSize:14,background:"#fff",outline:"none", fontFamily:"inherit", color:"#111827", ...style }} />;
+function Inp({ value, onChange, placeholder, type="text", style={}, ...rest }) {
+  return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{ width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10, border:"1px solid #E5E7EB",fontSize:14,background:"#fff",outline:"none", fontFamily:"inherit", color:"#111827", ...style }} {...rest} />;
 }
 
 function Toast({ msg, type, onDone }) {
@@ -55,26 +55,33 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    // A propriedade fontFamily foi adicionada na div principal logo abaixo:
-    <div style={{ fontFamily: "'DM Sans', sans-serif", display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#F4F3F0", padding: 16, color: "#111827" }}>
+    // Transformamos a div principal numa coluna vertical
+    <div style={{ fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F3F0", color: "#111827" }}>
+      
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
-      <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
-        <div style={{ display:"flex", justifyContent:"center", marginBottom: 20 }}>
-          <img src="/logo-convenio.png" alt="Logo ConvênioPro" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 12 }} />
-        </div>
-        <h2 style={{ textAlign:"center", fontSize:24, fontWeight:900, marginBottom:8, color:"#111" }}>ConvênioPro</h2>
-        <p style={{ textAlign:"center", color:"#6B7280", fontSize:14, marginBottom:30 }}>{isLogin ? "Entre na sua conta da empresa" : "Crie uma nova conta de empresa"}</p>
-        <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          {!isLogin && (<div><Lbl>NOME DA EMPRESA *</Lbl><Inp type="text" value={name} onChange={setName} placeholder="Ex: Padaria do João" /></div>)}
-          <div><Lbl>E-MAIL DA EMPRESA *</Lbl><Inp type="email" value={email} onChange={setEmail} placeholder="empresa@exemplo.com" /></div>
-          <div><Lbl>PALAVRA-PASSE *</Lbl><Inp type="password" value={password} onChange={setPassword} placeholder="••••••••" /></div>
-          <Btn style={{ width:"100%", justifyContent:"center", marginTop:10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
-        </form>
-        <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#6B7280" }}>
-          {isLogin ? "Não possui uma conta? " : "Já possui uma conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registre-se aqui" : "Faça login"}</span>
-        </div>
-      </Card>
-      <AppFooter/>
+
+      {/* Esta nova div usa "flex: 1" para ocupar todo o espaço e garantir que o card fique bem no meio */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <Card style={{ width: "100%", maxWidth: 400, padding: "40px 24px" }}>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom: 20 }}>
+            <img src="/logo-convenio.png" alt="Logo ConvênioPro" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 12 }} />
+          </div>
+          <h2 style={{ textAlign:"center", fontSize:24, fontWeight:900, marginBottom:8, color:"#111" }}>ConvênioPro</h2>
+          <p style={{ textAlign:"center", color:"#6B7280", fontSize:14, marginBottom:30 }}>{isLogin ? "Entre na sua conta da empresa" : "Crie uma nova conta de empresa"}</p>
+          <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            {!isLogin && (<div><Lbl>NOME DA EMPRESA *</Lbl><Inp type="text" value={name} onChange={setName} placeholder="Ex: Padaria do João" /></div>)}
+            <div><Lbl>E-MAIL DA EMPRESA *</Lbl><Inp type="email" value={email} onChange={setEmail} placeholder="empresa@exemplo.com" /></div>
+            <div><Lbl>PALAVRA-PASSE *</Lbl><Inp type="password" value={password} onChange={setPassword} placeholder="••••••••" /></div>
+            <Btn style={{ width:"100%", justifyContent:"center", marginTop:10 }} disabled={loading || !email || !password || (!isLogin && !name)}>{loading ? "A processar..." : (isLogin ? "Entrar" : "Criar Conta")}</Btn>
+          </form>
+          <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#6B7280" }}>
+            {isLogin ? "Não tem conta? " : "Já tem conta? "}<span onClick={() => { setIsLogin(!isLogin); setToast(null); }} style={{ color:"#4F46E5", fontWeight:700, cursor:"pointer", textDecoration:"underline" }}>{isLogin ? "Registe-se aqui" : "Faça login"}</span>
+          </div>
+        </Card>
+      </div>
+
+      <AppFooter />
+      
     </div>
   );
 }
