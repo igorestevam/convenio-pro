@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
-  Users, Plus, Upload, Download, Search, Trash2, ArrowLeft,
+  Users, Plus, Download, Search, Trash2, ArrowLeft,
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
-  Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Lock, Edit, LayoutGrid
+  Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Edit, Loader2
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -34,6 +34,16 @@ const uid = () => String(++_uid);
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
 /* ═══ Shared UI ═════════════════════════════════════════════════════════ */
+
+function LoadingScreen() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, minHeight: "60vh", gap: 16 }}>
+      <Loader2 size={48} color="#4F46E5" style={{ animation: "spin 1.2s linear infinite" }} />
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#4F46E5" }}>A carregar informações...</div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
 
 function Chip({ children, color = "#4F46E5", bg = "#EEF2FF", style = {} }) {
   return (
@@ -239,7 +249,6 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
           </thead>
           <tbody>
             {clients.map((client, idx) => {
-              // Puxa o total apenas das faturas que não estão pagas
               const totalAberto = unpaidTotalsByClient[client.id] || 0;
               const latestMethod = latestMethodByClient[client.id] || client.method;
               return (
@@ -275,14 +284,11 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
 function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpenEdit }) {
   const { client, faturas, totalAberto, totalGeralCliente } = data;
 
-  // ESTADOS PARA OS FILTROS DE ANO E MÊS
   const [fy, setFy] = useState("all");
   const [fm, setFm] = useState("all");
 
-  // Extrair os anos disponíveis do histórico do cliente
   const years = useMemo(() => [...new Set(faturas.map(f => f.monthYear.split("-")[0]))].sort().reverse(), [faturas]);
 
-  // Filtrar as faturas/consumos do cliente com base na seleção
   const filteredFaturas = useMemo(() => {
     return faturas.filter(f => {
       const [y, m] = f.monthYear.split("-");
@@ -356,7 +362,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
       </Card>
 
       <div>
-        {/* BARRA DE TÍTULO E FILTROS */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#111" }}>Faturas e lançamentos</div>
           
@@ -372,7 +377,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
           </div>
         </div>
 
-        {/* LISTAGEM FILTRADA */}
         {filteredFaturas.length === 0 ? (
           <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 40, textAlign: "center", color: "#9CA3AF" }}>
             <Receipt size={32} style={{ opacity: .25, marginBottom: 10 }} />
@@ -416,7 +420,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
 function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, onSelectClient, onSetStatus, onSetMethod, onExportXLSX, onExportBatch }) {
   const selStyle = { padding: "9px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer" };
 
-  // Agrupar faturas hierarquicamente: Ano -> Mês -> Faturas
   const groupedByYearAndMonth = useMemo(() => {
     const grouped = {};
     faturas.forEach(f => {
@@ -432,7 +435,6 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
 
   return (
     <div>
-      {/* Barra de Filtros e Total */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <select value={fy} onChange={e => setFy(e.target.value)} style={selStyle}><option value="all">Todos os anos</option>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
         <select value={fm} onChange={e => setFm(e.target.value)} style={selStyle}><option value="all">Todos os meses</option>{MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}</select>
@@ -451,7 +453,6 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
       {faturas.length === 0 ? (
         <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 60, textAlign: "center", color: "#9CA3AF" }}>Nenhuma fatura encontrada com estes filtros</div>
       ) : (
-        // Renderização Agrupada (Ano -> Mês -> Tabela)
         Object.keys(groupedByYearAndMonth).sort((a, b) => b.localeCompare(a)).map(year => (
           <div key={year} style={{ marginBottom: 40 }}>
             <h2 style={{ fontFamily: "inherit", fontSize: 22, fontWeight: 700, color: "#111", borderBottom: "2px solid #E5E7EB", paddingBottom: 8, marginBottom: 20 }}>
@@ -506,11 +507,15 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
   );
 }
 
+/* ═══ ConsumoCliente Principal ══════════════════════════════════════════ */
+
 export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBack, onLogout }) {
+  const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState([]);
   const [fatExtras, setFatExtras] = useState({});
   
   const [path, setPath] = useState(window.location.pathname);
+  const currentMonthName = MONTHS[new Date().getMonth()];
 
   useEffect(() => {
     const handlePopState = () => setPath(window.location.pathname);
@@ -538,7 +543,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
   const [form, setForm] = useState({ name: "", email: "", phone: "", method: "BOLETO" });
   const [editingClient, setEditingClient] = useState(null);
 
-  // Filtros de ano e mês iniciam no momento atual
   const [fy, setFy] = useState("all");
   const [fm, setFm] = useState("all");
   const [fs, setFs] = useState("all");
@@ -553,9 +557,19 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
   };
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([fetchAPI('/clientes').then(r => r.json()), fetchAPI('/fatextras').then(r => r.json())])
-      .then(([clientesDb, extrasDb]) => { setClients(clientesDb || []); setFatExtras(extrasDb || {}); })
-      .catch(err => { if (err.message !== "Sessão expirada") showToast("Erro ao carregar banco de dados", "error"); });
+      .then(([clientesDb, extrasDb]) => { 
+        setClients(clientesDb || []); 
+        setFatExtras(extrasDb || {}); 
+      })
+      .catch(err => { 
+        if (err.message !== "Sessão expirada") showToast("Erro ao carregar banco de dados", "error"); 
+      })
+      .finally(() => {
+        // Atraso de 800ms forçado para garantir que a animação de carregamento é exibida de forma suave
+        setTimeout(() => setLoading(false), 800); 
+      });
   }, [token]);
 
   /* ── Derived ── */
@@ -564,7 +578,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
   const ticketMedio = useMemo(() => allConsumos.length ? totalGeral / allConsumos.length : 0, [totalGeral, allConsumos]);
 
   const totalMesAtual = useMemo(() => {
-    const currentMonthKey = new Date().toISOString().slice(0, 7); // Ex: "2026-05"
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
     return allConsumos
       .filter(c => mkKey(c.date) === currentMonthKey)
       .reduce((s, c) => s + c.value, 0);
@@ -607,7 +621,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     return result.sort((a, b) => b.monthYear.localeCompare(a.monthYear));
   }, [allFaturas, clients, fatExtras]);
 
-  // Gera mapa de Totais Não Pagos por Cliente
   const unpaidTotalsByClient = useMemo(() => {
     const map = {};
     richFaturas.forEach(f => {
@@ -617,7 +630,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     return map;
   }, [richFaturas]);
 
-  // Gera dados agrupados para o Gráfico Geral do Dashboard
   const mainChartData = useMemo(() => {
     const map = {};
     richFaturas.forEach(f => {
@@ -723,14 +735,8 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Fatura Detalhada');
 
-    // 1. Configura a largura das colunas
-    worksheet.columns = [
-      { width: 15 }, // Col A
-      { width: 30 }, // Col B
-      { width: 20 }  // Col C
-    ];
+    worksheet.columns = [{ width: 15 }, { width: 30 }, { width: 20 }];
 
-    // 2. Cabeçalho de Informações do Cliente
     worksheet.addRow(['Cliente', fatura.clientName]);
     worksheet.addRow(['E-mail', fatura.clientEmail || 'Não informado']);
     worksheet.addRow(['Telefone', fatura.clientPhone || 'Não informado']);
@@ -739,43 +745,38 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     worksheet.addRow(['Status', fatura.status]);
     worksheet.addRow(['Total', BRL(fatura.total)]);
 
-    // Formata as informações (Coluna A em Negrito)
     for (let i = 1; i <= 7; i++) {
       worksheet.getCell(`A${i}`).font = { bold: true, color: { argb: 'FF374151' } };
       worksheet.getCell(`B${i}`).alignment = { horizontal: 'left' };
     }
 
-    worksheet.addRow([]); // Linha 8 vazia para dar respiro
+    worksheet.addRow([]);
 
-    // 3. Cabeçalho da Tabela de Consumos (Linha 9)
     const headerRow = worksheet.addRow(['#', 'Data do Consumo', 'Valor (R$)']);
     headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // Letra Branca
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Fundo Roxo ConvênioPro
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
     });
 
-    // 4. Inserindo os Dados (com bordas e formato moeda)
     [...fatura.consumos].sort((a, b) => a.date.localeCompare(b.date)).forEach((c, i) => {
       const row = worksheet.addRow([i + 1, fmtD(c.date), c.value]);
       row.eachCell((cell, colNumber) => {
         cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         cell.alignment = { horizontal: 'center' };
-        if (colNumber === 3) cell.numFmt = '"R$" #,##0.00'; // Formato de moeda contábil
+        if (colNumber === 3) cell.numFmt = '"R$" #,##0.00';
       });
     });
 
-    // 5. Linha de Total Final Destacada
     const totalRow = worksheet.addRow(['', 'TOTAL DA FATURA', fatura.total]);
     totalRow.getCell(2).font = { bold: true, color: { argb: 'FF111111' } };
     totalRow.getCell(2).alignment = { horizontal: 'right' };
-    totalRow.getCell(3).font = { bold: true, color: { argb: 'FF15803D' } }; // Valor em Verde
+    totalRow.getCell(3).font = { bold: true, color: { argb: 'FF15803D' } };
     totalRow.getCell(3).numFmt = '"R$" #,##0.00';
     totalRow.getCell(2).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
     totalRow.getCell(3).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 
-    // 6. Gerar e Baixar
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `fatura-${fatura.clientName.replace(/\s+/g, "-")}-${fatura.monthYear}.xlsx`);
   };
@@ -784,7 +785,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Fechamento de Faturas');
 
-    // 1. Configura as colunas
     worksheet.columns = [
       { header: 'Mês/Ano', key: 'mes', width: 15 },
       { header: 'Cliente', key: 'cliente', width: 35 },
@@ -796,7 +796,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       { header: 'Total (R$)', key: 'total', width: 20 }
     ];
 
-    // 2. Formata o Cabeçalho (Roxo com letras brancas)
     const headerRow = worksheet.getRow(1);
     headerRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -805,7 +804,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
     });
 
-    // 3. Adiciona os Dados
     filteredFaturas.forEach(f => {
       const row = worksheet.addRow([
         mLabel(f.monthYear), f.clientName, f.clientEmail || "-", f.clientPhone || "-",
@@ -818,7 +816,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       });
     });
 
-    // 4. Linha de Total Geral (Somatório da Tabela)
     const totalRow = worksheet.addRow(['', '', '', '', '', '', 'TOTAL GERAL:', filteredTotal]);
     totalRow.getCell(7).font = { bold: true };
     totalRow.getCell(7).alignment = { horizontal: 'right' };
@@ -827,14 +824,13 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     totalRow.getCell(7).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
     totalRow.getCell(8).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 
-    // 5. Gerar e Baixar
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `faturas-${fy}-${fm}.xlsx`);
   };
 
   /* ── Render ── */
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#F4F3F0", minHeight: "100vh", color: "#111827" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#F4F3F0", minHeight: "100vh", color: "#111827", display: "flex", flexDirection: "column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -851,10 +847,9 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       `}</style>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
-<header className="app-header">
+      <header className="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           
-          {/* Botão movido para o lado esquerdo da logo */}
           <Btn onClick={onBack} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}>
             <ArrowLeft size={15} /> Menu
           </Btn>
@@ -884,106 +879,107 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
         </div>
       </header>
 
-      {/* ─── Container do Topo (Cards + Feed) ─── */}
-      <div className="top-dashboard-container" style={{ padding: "20px 24px 0", maxWidth: 1400, margin: "0 auto" }}>
+      {loading ? (
+        <LoadingScreen />
+      ) : (
+        <>
+          <div className="top-dashboard-container" style={{ padding: "20px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <Card style={{ background: "linear-gradient(135deg,#4F46E5,#6D28D9)", color: "#fff", padding: 22, textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, opacity: .75, letterSpacing: .7, marginBottom: 8 }}>TOTAL DO MÊS ATUAL - {currentMonthName.toUpperCase()}</div>
+                <div style={{ fontSize: 32, fontWeight: 900 }}>{BRL(totalMesAtual)}</div>
+              </Card>
 
-        {/* Coluna da Esquerda: Indicadores */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={{ background: "linear-gradient(135deg,#4F46E5,#6D28D9)", color: "#fff", padding: 22, textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, opacity: .75, letterSpacing: .7, marginBottom: 8 }}>TOTAL DO MÊS ATUAL</div>
-            <div style={{ fontSize: 32, fontWeight: 900 }}>{BRL(totalMesAtual)}</div>
-          </Card>
-
-          <div className="summary-grid">
-            <Card style={{ padding: 22, textAlign: "center" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .7, marginBottom: 8 }}>CLIENTES ATIVOS</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: "#111" }}>{clients.filter(c => c.active !== false).length}</div>
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 6 }}><Users size={16} color="#4F46E5" /></div>
-            </Card>
-            <Card style={{ padding: 22, textAlign: "center" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .7, marginBottom: 8 }}>TICKET MÉDIO GLOBAL</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: "#111" }}>{BRL(ticketMedio)}</div>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{allConsumos.length} lançamentos</div>
-            </Card>
-          </div>
-        </div>
-        <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 250 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Últimos Lançamentos</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
-            {ultimosLancamentos.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum lançamento recente</div>
-            ) : (
-              ultimosLancamentos.map(l => (
-                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: "1px solid #F3F4F6", fontSize: 13 }}>
-                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>
-                    <div style={{ fontWeight: 800, color: "#111" }}>{l.clientName}</div>
-                    <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 1 }}>{fmtD(l.date)}</div>
-                  </div>
-                  <div style={{ fontWeight: 900, color: "#15803D", whiteSpace: "nowrap" }}>{BRL(l.value)}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-      </div>
-
-      <main style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
-        {selId && clientData ? (
-          <ClientDetail data={clientData} onDeleteConsumo={deleteConsumo} onUpdateMethod={updateMethod} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} />
-        ) : (
-          <>
-            {/* GRÁFICO PRINCIPAL DO DASHBOARD */}
-            <Card style={{ marginBottom: 24, padding: 22 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 16, letterSpacing: .5 }}>EVOLUÇÃO GERAL DE VENDAS DO SISTEMA (R$)</div>
-              {mainChartData.length > 0 ? (
-                <div style={{ height: 220, width: "100%" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={mainChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} tickFormatter={v => v.toLocaleString('pt-BR')} />
-                      <Tooltip formatter={(v) => [BRL(v), "Total"]} labelStyle={{ color: '#111', fontWeight: 800, marginBottom: 4 }} contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", fontWeight: 700, fontSize: 13 }} />
-                      <Bar dataKey="Total" barSize={30} fill="#C7D2FE" radius={[6, 6, 0, 0]} />
-                      <Line type="monotone" dataKey="Total" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: "#4F46E5", strokeWidth: 2, stroke: "#fff" }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px 0", fontSize: 13, fontWeight: 600 }}>Nenhuma venda registrada ainda.</div>
-              )}
-            </Card>
-
-            {/* ABAS CLIENTES/FATURAS */}
-            <div style={{ display: "inline-flex", gap: 2, background: "#E5E7EB", borderRadius: 12, padding: 4, marginBottom: 20 }}>
-              {[{ id: "clientes", label: "Clientes", Icon: Users }, { id: "faturas", label: "Faturas", Icon: Receipt }].map(t => (
-                <button key={t.id} onClick={() => navigate(`/consumo${t.id === 'faturas' ? '/faturas' : ''}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
-              ))}
-            </div>
-
-            {tab === "clientes" ? (
-              <div>
-                <div className="search-bar-container">
-                  <div className="search-input-wrapper">
-                    <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por razão social, e-mail..." style={{ width: "100%", padding: "11px 12px 11px 36px", borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 14, background: "#fff", fontFamily: "inherit", outline: "none" }} />
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Btn variant={showActive ? "primary" : "secondary"} onClick={() => setShowActive(!showActive)} style={{ padding: "10px 14px", fontSize: 12 }}>Ativos</Btn>
-                    <Btn variant={showInactive ? "primary" : "secondary"} onClick={() => setShowInactive(!showInactive)} style={{ padding: "10px 14px", fontSize: 12 }}>Inativos</Btn>
-                  </div>
-                </div>
-                <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={(id) => navigate(`/consumo/cliente/${id}`)} onAddConsumo={addConsumo} onToast={showToast} />
+              <div className="summary-grid">
+                <Card style={{ padding: 22, textAlign: "center" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .7, marginBottom: 8 }}>CLIENTES ATIVOS</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#111" }}>{clients.filter(c => c.active !== false).length}</div>
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 6 }}><Users size={16} color="#4F46E5" /></div>
+                </Card>
+                <Card style={{ padding: 22, textAlign: "center" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: .7, marginBottom: 8 }}>TICKET MÉDIO GLOBAL</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#111" }}>{BRL(ticketMedio)}</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{allConsumos.length} lançamentos</div>
+                </Card>
               </div>
-            ) : (
-              <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={(id) => navigate(`/consumo/cliente/${id}`)} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
-            )}
-          </>
-        )}
-      </main>
+            </div>
+            <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 250 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Últimos Lançamentos - {currentMonthName}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
+                {ultimosLancamentos.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum lançamento recente</div>
+                ) : (
+                  ultimosLancamentos.map(l => (
+                    <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: "1px solid #F3F4F6", fontSize: 13 }}>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>
+                        <div style={{ fontWeight: 800, color: "#111" }}>{l.clientName}</div>
+                        <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 1 }}>{fmtD(l.date)}</div>
+                      </div>
+                      <div style={{ fontWeight: 900, color: "#15803D", whiteSpace: "nowrap" }}>{BRL(l.value)}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
 
-      {showModal && <NewClientModal data={form} onChange={setForm} onConfirm={addClient} onClose={() => setShowModal(false)} />}
-      {editingClient && <EditClientModal client={editingClient} onUpdate={updateClientInfo} onDelete={removeClient} onClose={() => setEditingClient(null)} />}
-        <AppFooter/>
+          <main style={{ padding: 24, maxWidth: 1400, margin: "0 auto", flex: 1, width: "100%" }}>
+            {selId && clientData ? (
+              <ClientDetail data={clientData} onDeleteConsumo={deleteConsumo} onUpdateMethod={updateMethod} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} />
+            ) : (
+              <>
+                <Card style={{ marginBottom: 24, padding: 22 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 16, letterSpacing: .5 }}>EVOLUÇÃO GERAL DE VENDAS DO SISTEMA (R$)</div>
+                  {mainChartData.length > 0 ? (
+                    <div style={{ height: 220, width: "100%" }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={mainChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} tickFormatter={v => v.toLocaleString('pt-BR')} />
+                          <Tooltip formatter={(v) => [BRL(v), "Total"]} labelStyle={{ color: '#111', fontWeight: 800, marginBottom: 4 }} contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", fontWeight: 700, fontSize: 13 }} />
+                          <Bar dataKey="Total" barSize={30} fill="#C7D2FE" radius={[6, 6, 0, 0]} />
+                          <Line type="monotone" dataKey="Total" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: "#4F46E5", strokeWidth: 2, stroke: "#fff" }} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px 0", fontSize: 13, fontWeight: 600 }}>Nenhuma venda registrada ainda.</div>
+                  )}
+                </Card>
+
+                <div style={{ display: "inline-flex", gap: 2, background: "#E5E7EB", borderRadius: 12, padding: 4, marginBottom: 20 }}>
+                  {[{ id: "clientes", label: "Clientes", Icon: Users }, { id: "faturas", label: "Faturas", Icon: Receipt }].map(t => (
+                    <button key={t.id} onClick={() => navigate(`/consumo${t.id === 'faturas' ? '/faturas' : ''}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
+                  ))}
+                </div>
+
+                {tab === "clientes" ? (
+                  <div>
+                    <div className="search-bar-container">
+                      <div className="search-input-wrapper">
+                        <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por razão social, e-mail..." style={{ width: "100%", padding: "11px 12px 11px 36px", borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 14, background: "#fff", fontFamily: "inherit", outline: "none" }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <Btn variant={showActive ? "primary" : "secondary"} onClick={() => setShowActive(!showActive)} style={{ padding: "10px 14px", fontSize: 12 }}>Ativos</Btn>
+                        <Btn variant={showInactive ? "primary" : "secondary"} onClick={() => setShowInactive(!showInactive)} style={{ padding: "10px 14px", fontSize: 12 }}>Inativos</Btn>
+                      </div>
+                    </div>
+                    <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={(id) => navigate(`/consumo/cliente/${id}`)} onAddConsumo={addConsumo} onToast={showToast} />
+                  </div>
+                ) : (
+                  <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={(id) => navigate(`/consumo/cliente/${id}`)} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
+                )}
+              </>
+            )}
+          </main>
+
+          {showModal && <NewClientModal data={form} onChange={setForm} onConfirm={addClient} onClose={() => setShowModal(false)} />}
+          {editingClient && <EditClientModal client={editingClient} onUpdate={updateClientInfo} onDelete={removeClient} onClose={() => setEditingClient(null)} />}
+        </>
+      )}
+
+      <AppFooter/>
     </div>
   );
 }

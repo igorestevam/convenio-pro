@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 
 /* ─── API BASE URL ─── */
@@ -78,7 +79,7 @@ function InlineConsumo({ value, onSave }) {
   const [val, setVal] = useState(value === 0 ? "" : value);
   useEffect(() => { setVal(value === 0 ? "" : value); }, [value]);
   const handleCommit = () => {
-    const v = typeof parseBrValue === 'function' ? parseBrValue(val) : parseFloat(String(val).replace(",", "."));
+    const v = parseFloat(String(val).replace(",", "."));
     const finalV = isNaN(v) || v < 0 ? 0 : v;
     if (finalV !== value) onSave(finalV);
     setVal(finalV === 0 ? "" : finalV);
@@ -126,7 +127,7 @@ function InlineRowInputs({ funcId, onAddEntry }) {
 }
 
 /* ─── Detalhes do Funcionário (Página Interna) ─── */
-function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit }) {
+function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit, onExportFuncionarioMes }) {
   const [dt, setDt] = useState(todayStr());
   const [val, setVal] = useState("");
 
@@ -194,10 +195,8 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
       {grouped.map(mData => {
         const isPago = mData.status === "PAGO";
         const base = Number(func.salary) || 0;
-        
-        // MATEMÁTICA DEFINIDA:
-        const liquido = base - mData.valesTotal - mData.consumo; // Líquido a pagar se ainda estiver pendente
-        const totalPago = base - mData.consumo;                  // Total que ele ganhou pelo mês (vales já foram recebidos antes)
+        const liquido = base - mData.valesTotal - mData.consumo;
+        const totalPago = base - mData.consumo;
 
         return (
           <Card key={mData.month} style={{ marginBottom: 14, padding: 0 }}>
@@ -207,10 +206,12 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
                 <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>{MONTHS[parseInt(mData.month.split("-")[1]) - 1]} / {mData.month.split("-")[0]}</span>
                 {isPago ? <Chip color="#15803D" bg="#DCFCE7"><CheckCircle2 size={12}/> Pago</Chip> : <Chip color="#D97706" bg="#FEF3C7"><Clock size={12}/> Pendente</Chip>}
               </div>
-              <div style={{ display: "flex", gap: 16, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 6 }}>Vales: <b style={{color: "#D97706"}}>{BRL(mData.valesTotal)}</b></span>
                 <InlineConsumo value={mData.consumo} onSave={v => onUpdateFolhaExtra(mData.key, { consumo: v })} />
-                <div style={{ width: 1, height: 20, background: "#E5E7EB", margin: "0 8px" }}></div>
+                {/* ── Botão XLSX por mês (= exportXLSX por fatura no ConsumoCliente) ── */}
+                <Btn variant="success" onClick={() => onExportFuncionarioMes(func, mData)} style={{ padding: "4px 10px", fontSize: 11 }}><Download size={13} /> XLSX</Btn>
+                <div style={{ width: 1, height: 20, background: "#E5E7EB" }}></div>
                 {isPago ? (
                    <button onClick={() => onUpdateFolhaExtra(mData.key, { status: "PENDENTE" })} style={{ background:"none", border:"none", color:"#9CA3AF", cursor:"pointer", fontSize: 12, fontWeight: 700, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }} title="Desfazer"><X size={14}/> Desfazer</button>
                 ) : (
@@ -271,6 +272,7 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
     </div>
   );
 }
+
 /* ─── Modais ─── */
 function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
   const [form, setForm] = useState(
@@ -296,7 +298,6 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
             <div style={{ flex: 1 }}><Lbl>SALÁRIO BASE (R$) *</Lbl><Inp type="number" value={form.salary} onChange={v => setForm({ ...form, salary: v })} placeholder="1500" /></div>
             <div style={{ flex: 1 }}><Lbl>CHAVE PIX</Lbl><Inp value={form.pixKey} onChange={v => setForm({ ...form, pixKey: v })} placeholder="CPF, E-mail ou Telefone" /></div>
           </div>
-          
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Lbl>POSSUI CONTRACHEQUE?</Lbl>
@@ -338,8 +339,6 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
 /* ─── Main App de Salários ─── */
 export default function SalarioFuncionario({ token, empresaEmail, empresaNome, onBack, onLogout }) {
   const [path, setPath] = useState(window.location.pathname);
-
-  // Descobre automaticamente o nome do mês atual para os cards
   const currentMonthName = MONTHS[new Date().getMonth()];
 
   useEffect(() => {
@@ -423,7 +422,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           tB += base; tV += vales; tL += liquido;
           
           funcFolhas.push({
-            ...f, base, vales, consumos: consumo, liquido, 
+            ...f, base, vales, consumos: consumo, liquido,
             key: `${f.id}_${month}`,
             status: fExtra.status || "PENDENTE"
           });
@@ -504,28 +503,242 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     } catch (err) { showToast("Erro ao atualizar", "error"); }
   };
 
-  const exportXLSX = (monthKey, fList) => {
-    const monthName = MONTHS[parseInt(monthKey.split("-")[1]) - 1];
-    const year = monthKey.split("-")[0];
-    const wb = XLSX.utils.book_new();
-    
-    const rows = [
-      ["Mês/Ano", `${monthName}/${year}`],
-      [],
-      ["Funcionário", "PIX", "Salário Bruto (R$)", "Vales Retirados (R$)", "Consumos (R$)", "Líquido a Pagar (R$)", "Status"]
+  /* ═══════════════════════════════════════════════════════════════════════
+   * EXPORTAÇÕES XLSX
+   * Mesma estrutura do ConsumoCliente:
+   *   exportFuncionarioMes → holerite individual por mês  (≡ exportXLSX no CC)
+   *   exportXLSX           → folha completa de um mês     (≡ exportXLSX do CC por fatura agrupada)
+   *   exportBatch          → todas as folhas de todos os meses (≡ exportBatch no CC)
+   * ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── 1. Holerite individual: 1 funcionário × 1 mês ───────────────────── */
+  const exportFuncionarioMes = async (func, mData) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Holerite');
+
+    worksheet.columns = [
+      { width: 28 }, // Coluna A — rótulos
+      { width: 35 }, // Coluna B — valores
+      { width: 20 }, // Coluna C — valor numérico (tabela de vales)
     ];
 
-    fList.forEach(f => {
-      rows.push([f.name, f.pixKey || "Sem PIX", f.base, f.vales, f.consumos, f.liquido, f.status]);
+    const [year, monthNum] = mData.month.split("-");
+    const monthName = MONTHS[parseInt(monthNum) - 1];
+    const base = Number(func.salary) || 0;
+    const liquido = base - mData.valesTotal - mData.consumo;
+
+    // ── Bloco de informações do funcionário (igual ao bloco de cliente no CC) ──
+    const infoRows = [
+      ["Funcionário",  func.name],
+      ["E-mail",       func.email  || "Não informado"],
+      ["Telefone",     func.phone  || "Não informado"],
+      ["Chave PIX",    func.pixKey || "Não informado"],
+      ["Salário Base", BRL(base)],
+      ["Mês/Ano",      `${monthName}/${year}`],
+      ["Status",       mData.status],
+    ];
+    infoRows.forEach(([lbl, val]) => {
+      worksheet.addRow([lbl, val]);
+    });
+    for (let i = 1; i <= infoRows.length; i++) {
+      worksheet.getCell(`A${i}`).font = { bold: true, color: { argb: "FF374151" } };
+      worksheet.getCell(`B${i}`).alignment = { horizontal: "left" };
+    }
+
+    worksheet.addRow([]); // linha em branco
+
+    // ── Cabeçalho da tabela de vales (igual ao cabeçalho roxo do CC, mas verde) ──
+    const headerRow = worksheet.addRow(["#", "Data do Vale", "Valor (R$)"]);
+    headerRow.eachCell((cell) => {
+      cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
     });
 
-    const totalLiquido = fList.reduce((s, x) => s + x.liquido, 0);
-    rows.push(["", "", "", "", "TOTAL LÍQUIDO", totalLiquido, ""]);
+    // ── Linhas de vales ──
+    [...mData.valesList].sort((a, b) => a.date.localeCompare(b.date)).forEach((e, i) => {
+      const row = worksheet.addRow([i + 1, fmtD(e.date), e.value]);
+      row.eachCell((cell, col) => {
+        cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+        cell.alignment = { horizontal: "center" };
+        if (col === 3) cell.numFmt = '"R$" #,##0.00';
+      });
+    });
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Folha");
-    XLSX.writeFile(wb, `Folha-Pagamento-${monthKey}.xlsx`);
+    worksheet.addRow([]); // linha em branco
+
+    // ── Tabela de fechamento (salário base, descontos, líquido) ──
+    const fechHeader = worksheet.addRow(["Descrição", "", "Valor (R$)"]);
+    fechHeader.eachCell((cell) => {
+      cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF374151" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const fechRows = [
+      ["Salário Base Bruto",           "",  base],
+      ["(-) Consumos (Desconto)",       "", -mData.consumo],
+      ["(-) Vales Retirados",          "", -mData.valesTotal],
+    ];
+    fechRows.forEach(([lbl, _, val]) => {
+      const row = worksheet.addRow([lbl, "", val]);
+      row.eachCell((cell, col) => {
+        cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+        cell.alignment = { horizontal: col === 1 ? "left" : "center" };
+        if (col === 3) cell.numFmt = '"R$" #,##0.00';
+      });
+    });
+
+    // ── Linha de total (verde, igual ao total verde do CC) ──
+    const totalRow = worksheet.addRow(["LÍQUIDO A PAGAR", "", liquido]);
+    totalRow.getCell(1).font      = { bold: true, color: { argb: "FF111111" } };
+    totalRow.getCell(3).font      = { bold: true, color: { argb: "FF15803D" } };
+    totalRow.getCell(3).numFmt    = '"R$" #,##0.00';
+    [1, 3].forEach(col => {
+      totalRow.getCell(col).border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `holerite-${func.name.replace(/\s+/g, "-")}-${mData.month}.xlsx`);
   };
 
+  /* ── 2. Folha completa de um mês (todos os funcionários) ─────────────── */
+  const exportXLSX = async (monthKey, fList) => {
+    const [year, monthNum] = monthKey.split("-");
+    const monthName = MONTHS[parseInt(monthNum) - 1];
+    const totalLiquido = fList.reduce((s, x) => s + x.liquido, 0);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Folha de Pagamento");
+
+    worksheet.columns = [
+      { width: 30 }, // Funcionário
+      { width: 25 }, // PIX
+      { width: 20 }, // Salário Bruto
+      { width: 20 }, // Vales
+      { width: 20 }, // Consumos
+      { width: 22 }, // Líquido
+      { width: 15 }, // Status
+    ];
+
+    // ── Bloco de informações do mês (igual ao bloco de cliente no CC) ──
+    const infoRows = [
+      ["Mês/Ano",         `${monthName}/${year}`],
+      ["Funcionários",    String(fList.length)],
+      ["Total Líquido",   BRL(totalLiquido)],
+    ];
+    infoRows.forEach(([lbl, val]) => worksheet.addRow([lbl, val]));
+    for (let i = 1; i <= infoRows.length; i++) {
+      worksheet.getCell(`A${i}`).font    = { bold: true, color: { argb: "FF374151" } };
+      worksheet.getCell(`B${i}`).alignment = { horizontal: "left" };
+    }
+
+    worksheet.addRow([]); // linha em branco
+
+    // ── Cabeçalho da tabela (verde, igual ao roxo do CC) ──
+    const headerRow = worksheet.addRow([
+      "Funcionário", "Chave PIX", "Salário Bruto (R$)",
+      "Vales Retirados (R$)", "Consumos (R$)", "Líquido a Pagar (R$)", "Status",
+    ]);
+    headerRow.eachCell((cell) => {
+      cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    // ── Linhas de dados ──
+    fList.forEach((f) => {
+      const row = worksheet.addRow([
+        f.name, f.pixKey || "Sem PIX", f.base, f.vales, f.consumos, f.liquido, f.status,
+      ]);
+      row.eachCell((cell, col) => {
+        cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+        cell.alignment = { horizontal: col <= 2 ? "left" : "center" };
+        if (col >= 3 && col <= 6) cell.numFmt = '"R$" #,##0.00';
+      });
+    });
+
+    // ── Linha de total (verde, igual ao total verde do CC) ──
+    const totalRow = worksheet.addRow(["", "", "", "", "TOTAL LÍQUIDO A PAGAR:", totalLiquido, ""]);
+    totalRow.getCell(5).font      = { bold: true };
+    totalRow.getCell(5).alignment = { horizontal: "right" };
+    totalRow.getCell(6).font      = { bold: true, color: { argb: "FF15803D" } };
+    totalRow.getCell(6).numFmt    = '"R$" #,##0.00';
+    [5, 6].forEach(col => {
+      totalRow.getCell(col).border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Folha-Pagamento-${monthKey}.xlsx`);
+  };
+
+  /* ── 3. Exportação global — todos os meses (≡ exportBatch no CC) ─────── */
+  const exportBatch = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Fechamento Geral - Folhas");
+
+    worksheet.columns = [
+      { width: 18 }, // Mês/Ano
+      { width: 30 }, // Funcionário
+      { width: 25 }, // PIX
+      { width: 20 }, // Salário Bruto
+      { width: 18 }, // Vales
+      { width: 18 }, // Consumos
+      { width: 22 }, // Líquido
+      { width: 15 }, // Status
+    ];
+
+    // ── Cabeçalho da tabela (verde, igual ao roxo do CC) ──
+    const headerRow = worksheet.addRow([
+      "Mês/Ano", "Funcionário", "Chave PIX", "Salário Bruto (R$)",
+      "Vales (R$)", "Consumos (R$)", "Líquido a Pagar (R$)", "Status",
+    ]);
+    headerRow.eachCell((cell) => {
+      cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    // ── Linhas de dados (todos os meses, todos os funcionários) ──
+    let grandTotal = 0;
+    Object.keys(groupedFolhas)
+      .sort((a, b) => b.localeCompare(a))
+      .forEach((monthKey) => {
+        const [year, monthNum] = monthKey.split("-");
+        const monthLabel = `${MONTHS[parseInt(monthNum) - 1]}/${year}`;
+        groupedFolhas[monthKey].forEach((f) => {
+          const row = worksheet.addRow([
+            monthLabel, f.name, f.pixKey || "Sem PIX",
+            f.base, f.vales, f.consumos, f.liquido, f.status,
+          ]);
+          row.eachCell((cell, col) => {
+            cell.border    = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+            cell.alignment = { horizontal: col <= 3 ? "left" : "center" };
+            if (col >= 4 && col <= 7) cell.numFmt = '"R$" #,##0.00';
+          });
+          grandTotal += f.liquido;
+        });
+      });
+
+    // ── Linha de total geral (igual ao total geral do exportBatch do CC) ──
+    const totalRow = worksheet.addRow(["", "", "", "", "", "", "TOTAL GERAL:", grandTotal]);
+    totalRow.getCell(7).font      = { bold: true };
+    totalRow.getCell(7).alignment = { horizontal: "right" };
+    totalRow.getCell(8).font      = { bold: true, color: { argb: "FF15803D" } };
+    totalRow.getCell(8).numFmt    = '"R$" #,##0.00';
+    [7, 8].forEach(col => {
+      totalRow.getCell(col).border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `folhas-todas-exportacao.xlsx`);
+  };
+
+  /* ── Render ── */
   return (
     <div style={{fontFamily:"'DM Sans',sans-serif",background:"#F4F3F0",minHeight:"100vh",color:"#111827", display: "flex", flexDirection: "column"}}>
       <style>{`
@@ -538,11 +751,11 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         .summary-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
         .top-dashboard-container { display: grid; gap: 16px; grid-template-columns: 1fr; }
         @media (min-width: 1024px) { .top-dashboard-container { grid-template-columns: 2fr 1.2fr; } }
-        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .table-responsive table { min-width: 700px; } 
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .table-responsive table { min-width: 700px; }
         .search-bar-container { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
         .search-input-wrapper { position: relative; flex: 1; min-width: 250px; }
       `}</style>
-      
+
       {/* ── HEADER ── */}
       <header className="app-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -568,10 +781,18 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
       <main style={{padding:24,maxWidth:1400,margin:"0 auto", flex: 1, width: "100%"}}>
       {selId && funcData ? (
-        <FuncionarioDetail func={funcData} folhaStatus={folhaStatus} onAddEntry={handleAddEntry} onDeleteEntry={handleDeleteEntry} onUpdateFolhaExtra={handleUpdateFolhaExtra} onOpenEdit={() => setEditingFuncionario(funcData)} />
+        <FuncionarioDetail
+          func={funcData}
+          folhaStatus={folhaStatus}
+          onAddEntry={handleAddEntry}
+          onDeleteEntry={handleDeleteEntry}
+          onUpdateFolhaExtra={handleUpdateFolhaExtra}
+          onOpenEdit={() => setEditingFuncionario(funcData)}
+          onExportFuncionarioMes={exportFuncionarioMes}
+        />
       ) : (
         <>
-        {/* ── DASHBOARD INDICATORS & TABS ── */}
+        {/* ── DASHBOARD ── */}
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Card style={{background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",padding:22, textAlign:"center", flex: 1, display:"flex",flexDirection:"column",justifyContent:"center"}}>
@@ -617,7 +838,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           </Card>
         </div>
 
-        {/* ── ABAS NAVEGAÇÃO ── */}
+        {/* ── ABAS ── */}
         <div style={{ display:"inline-flex",gap:2,background:"#E5E7EB",borderRadius:12,padding:4,marginBottom:20 }}>
           {[{id:"funcionarios",label:"Funcionários",Icon:Users},{id:"folhas", label:"Folha de Pagamento", Icon:FileText}].map(t=>(
             <button key={t.id} onClick={()=>navigate(`/salario${t.id === 'folhas' ? '/folhas' : ''}`)} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:9,border:"none",fontFamily:"inherit",fontSize:13,fontWeight:800,cursor:"pointer",background:tab===t.id?"#fff":"transparent",color:tab===t.id?"#111":"#6B7280",boxShadow:tab===t.id?"0 1px 4px rgba(0,0,0,.1)":"none",transition:"all .15s" }}><t.Icon size={14}/>{t.label}</button>
@@ -627,7 +848,6 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         {/* ── CONTEÚDO DAS ABAS ── */}
         {tab === "funcionarios" ? (
           <div>
-            {/* Filtros */}
             <div className="search-bar-container">
               <div className="search-input-wrapper">
                 <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#9CA3AF"}}/>
@@ -639,7 +859,6 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
               </div>
             </div>
 
-            {/* Tabela de Funcionários */}
             <Card style={{padding:0}}>
               <div className="table-responsive">
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
@@ -684,8 +903,20 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
             </Card>
           </div>
         ) : (
-          /* Aba Folha de Pagamento */
+          /* ── ABA FOLHA DE PAGAMENTO ── */
           <div>
+            {/* Barra de total + botão Exportar global (= exportBatch do CC) */}
+            <div style={{ background: "#D1FAE5", borderRadius: 14, padding: 18, marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 4, letterSpacing: .5 }}>TOTAL LÍQUIDO GERAL</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: "#065F46" }}>{BRL(totalLiquidoGeral)}</div>
+                <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#047857", background: "#A7F3D0", padding: "2px 8px", borderRadius: 99, marginTop: 6 }}>
+                  {Object.values(groupedFolhas).reduce((s, l) => s + l.length, 0)} registros
+                </span>
+              </div>
+              <Btn variant="success" onClick={exportBatch} style={{ padding: "10px 18px" }}><Download size={15} /> Exportar XLSX</Btn>
+            </div>
+
             {Object.keys(groupedFolhas).sort((a, b) => b.localeCompare(a)).map(monthKey => {
               const monthName = MONTHS[parseInt(monthKey.split("-")[1]) - 1];
               const year = monthKey.split("-")[0];
@@ -700,6 +931,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                     </h2>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                       <span style={{fontSize: 16, fontWeight: 900, color: "#059669"}}>Total a Pagar: {BRL(monthTotalLiquido)}</span>
+                      {/* Botão XLSX por mês (= botão XLSX por fatura agrupada no CC) */}
                       <Btn variant="success" onClick={() => exportXLSX(monthKey, fList)} style={{ padding: "6px 12px", fontSize: 12 }}><Download size={14} /> XLSX</Btn>
                     </div>
                   </div>
@@ -754,8 +986,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       {showNewFuncionarioModal && (
         <FuncionarioModal 
           isEdit={false}
-          onSave={handleSaveFunc} 
-          onClose={() => setShowNewFuncionarioModal(false)} 
+          onSave={handleSaveFunc}
+          onClose={() => setShowNewFuncionarioModal(false)}
         />
       )}
       {editingFuncionario && (
@@ -767,7 +999,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           onClose={() => setEditingFuncionario(null)}
         />
       )}
-      
+
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <AppFooter/>
     </div>
