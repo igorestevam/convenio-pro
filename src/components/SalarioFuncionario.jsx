@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, LogOut, Wallet, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
+import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
+import AppHeader from "./AppHeader";
 
 /* ─── API BASE URL ─── */
 const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
@@ -757,27 +758,20 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       `}</style>
 
       {/* ── HEADER ── */}
-      <header className="app-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Btn onClick={() => selId ? navigate('/salario') : onBack()} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}><ArrowLeft size={15} /> {selId ? "Voltar" : "Menu"}</Btn>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg,#059669,#10B981)", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={18} color="#fff" /></div>
-          <div><div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Folha de Pagamento</div><div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de salários e vales</div></div>
-        </div>
-        <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {!selId && (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <User size={12} color="#4B5563" />
-                </div>
-                {empresaNome || empresaEmail}
+      <AppHeader subtitle="Controle de salários e vales" onMenu={onBack} onVoltar={selId ? () => navigate('/salario') : undefined}>
+        {!selId && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
+              <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <User size={12} color="#4B5563" />
               </div>
-              <Btn onClick={() => setShowNewFuncionarioModal(true)}><Plus size={15} /> Novo Funcionário</Btn>
-            </>
-          )}
-          <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
-        </div>
-      </header>
+              {empresaNome || empresaEmail}
+            </div>
+            <Btn onClick={() => setShowNewFuncionarioModal(true)}><Plus size={15} /> Novo Funcionário</Btn>
+          </>
+        )}
+        <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
+      </AppHeader>
 
       <main style={{padding:24,maxWidth:1400,margin:"0 auto", flex: 1, width: "100%"}}>
       {selId && funcData ? (

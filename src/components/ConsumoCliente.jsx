@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
-  Users, Plus, Download, Search, Trash2, ArrowLeft,
+  Users, Plus, Download, Search, Trash2,
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
   Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Edit, Loader2
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
+import AppHeader from "./AppHeader";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
 const MONTHS = [
@@ -279,15 +280,15 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
   );
 }
 
-/* ═══ ClientDetail ═══════════════════════════════════════════════════════ */
+/* ═══ ClientDetailModal ══════════════════════════════════════════════════ */
 
-function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpenEdit }) {
+function ClientDetailModal({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpenEdit, onClose }) {
   const { client, faturas, totalAberto, totalGeralCliente } = data;
 
-  const [fy, setFy] = useState("all");
-  const [fm, setFm] = useState("all");
+  const [fy, setFy] = useState(() => String(new Date().getFullYear()));
+  const [fm, setFm] = useState(() => String(new Date().getMonth() + 1));
 
-  const years = useMemo(() => [...new Set(faturas.map(f => f.monthYear.split("-")[0]))].sort().reverse(), [faturas]);
+  const years = useMemo(() => [...new Set([String(new Date().getFullYear()), ...faturas.map(f => f.monthYear.split("-")[0])])].sort().reverse(), [faturas]);
 
   const filteredFaturas = useMemo(() => {
     return faturas.filter(f => {
@@ -300,11 +301,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
 
   const ticketMedio = client.consumos.length > 0 ? totalGeralCliente / client.consumos.length : 0;
 
-  const chartData = [...faturas].reverse().map(f => {
-    const [year, month] = f.monthYear.split("-");
-    return { name: `${MONTHS[parseInt(month) - 1].substring(0, 3)}/${year.slice(2)}`, Total: f.total };
-  });
-
   const handleDeleteConsumo = (consumoId) => {
     if (window.confirm("Tem certeza que deseja apagar este consumo? Esta ação não pode ser desfeita.")) onDeleteConsumo(client.id, consumoId);
   };
@@ -312,7 +308,11 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
   const selStyle = { padding: "8px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer", outline: "none", color: "#374151", fontWeight: 600 };
 
   return (
-    <div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+      <Card style={{ width: "100%", maxWidth: 760, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto", background: "#F7F7F8" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }} title="Fechar"><X size={20} /></button>
+      </div>
       <Card style={{ marginBottom: 20, padding: 22 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
 
@@ -343,22 +343,6 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
           </div>
         </div>
 
-        {chartData.length > 0 && (
-          <div style={{ marginTop: 30, paddingTop: 20, borderTop: "1px solid #E5E7EB" }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 16, letterSpacing: .5 }}>EVOLUÇÃO MENSAL (R$)</div>
-            <div style={{ height: 180, width: "100%" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} tickFormatter={v => v.toLocaleString('pt-BR')} />
-                  <Tooltip formatter={(v) => [BRL(v), "Total"]} labelStyle={{ color: '#111', fontWeight: 800, marginBottom: 4 }} contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", fontWeight: 700, fontSize: 13 }} />
-                  <Bar dataKey="Total" barSize={30} fill="#C7D2FE" radius={[6, 6, 0, 0]} />
-                  <Line type="monotone" dataKey="Total" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: "#4F46E5", strokeWidth: 2, stroke: "#fff" }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
       </Card>
 
       <div>
@@ -411,6 +395,7 @@ function ClientDetail({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpen
           </Card>
         ))}
       </div>
+      </Card>
     </div>
   );
 }
@@ -484,6 +469,12 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
                               <span onClick={() => onSelectClient(f.clientId)} style={{ color: "#4F46E5", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
                                 {f.clientName}
                               </span>
+                              {(f.clientPhone || f.clientEmail) && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 10, marginLeft: 10, fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" }}>
+                                  {f.clientPhone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} />{f.clientPhone}</span>}
+                                  {f.clientEmail && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Mail size={11} />{f.clientEmail}</span>}
+                                </span>
+                              )}
                             </td>
                             <td style={{ padding: "12px 16px", color: "#6B7280" }}>{f.count}</td>
                             <td style={{ padding: "8px 16px" }}><MethodSel value={f.method} onChange={v => onSetMethod(f.key, v)} /></td>
@@ -528,12 +519,11 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     setPath(newPath);
   };
 
-  const { tab, selId } = useMemo(() => {
+  const { tab } = useMemo(() => {
     const parts = path.split('/').filter(Boolean);
-    if (parts[1] === 'faturas') return { tab: 'faturas', selId: null };
-    if (parts[1] === 'cliente' && parts[2]) return { tab: 'clientes', selId: parts[2] };
-    return { tab: 'clientes', selId: null };
+    return { tab: parts[1] === 'faturas' ? 'faturas' : 'clientes' };
   }, [path]);
+  const [selId, setSelId] = useState(null);
 
   const [search, setSearch] = useState("");
   const [showActive, setShowActive] = useState(true);
@@ -589,7 +579,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       c.consumos.map(cons => ({ ...cons, clientName: c.name }))
     );
     return list
-      .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+      .sort((a, b) => (Number(b.id) - Number(a.id)) || b.date.localeCompare(a.date))
       .slice(0, 15);
   }, [clients]);
 
@@ -693,7 +683,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     try {
       await fetchAPI(`/clientes/${editingClient.id}`, { method: 'DELETE' });
       setClients(p => p.filter(c => c.id !== editingClient.id)); setEditingClient(null);
-      if (selId === editingClient.id) navigate('/consumo'); showToast("Excluído com sucesso.");
+      if (selId === editingClient.id) setSelId(null); showToast("Excluído com sucesso.");
     } catch (err) { showToast("Erro", "error"); }
   };
 
@@ -711,13 +701,6 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     try {
       await fetchAPI(`/clientes/${clientId}/consumos/${consumoId}`, { method: 'DELETE' });
       setClients(p => p.map(c => c.id === clientId ? { ...c, consumos: c.consumos.filter(x => x.id !== consumoId) } : c)); showToast("Excluído!");
-    } catch (err) { showToast("Erro", "error"); }
-  };
-
-  const updateMethod = async (clientId, method) => {
-    try {
-      await fetchAPI(`/clientes/${clientId}/method`, { method: 'PATCH', body: JSON.stringify({ method }) });
-      setClients(p => p.map(c => c.id === clientId ? { ...c, method } : c)); showToast("Atualizado!");
     } catch (err) { showToast("Erro", "error"); }
   };
 
@@ -847,37 +830,20 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
       `}</style>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
-      <header className="app-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          
-          <Btn onClick={onBack} variant="secondary" style={{ padding: "8px 12px", marginRight: 8 }}>
-            <ArrowLeft size={15} /> Menu
-          </Btn>
-
-          <img src="/logo-convenio.png" alt="Logo" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0, borderRadius: 12 }} />
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>ConvênioPro</div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Controle de consumo de clientes</div>
-          </div>
-        </div>
-        
-        <div className="header-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {selId ? <Btn onClick={() => navigate('/consumo')} variant="secondary"><ArrowLeft size={15} /> Voltar</Btn> : (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <User size={12} color="#4B5563" />
-                </div>
-                {empresaNome || empresaEmail}
+      <AppHeader subtitle="Controle de consumo de clientes" onMenu={onBack}>
+        <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
+              <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <User size={12} color="#4B5563" />
               </div>
-              <Btn onClick={() => setShowModal(true)}><Plus size={15} /> Novo Cliente</Btn>
-              <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair">
-                <LogOut size={18} />
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+              {empresaNome || empresaEmail}
+            </div>
+            <Btn onClick={() => setShowModal(true)}><Plus size={15} /> Novo Cliente</Btn>
+            <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair">
+              <LogOut size={18} />
+            </button>
+        </>
+      </AppHeader>
 
       {loading ? (
         <LoadingScreen />
@@ -904,7 +870,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
               </div>
             </div>
             <Card style={{ padding: 20, display: "flex", flexDirection: "column", height: 250 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Últimos Lançamentos - {currentMonthName}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6B7280", letterSpacing: .7, marginBottom: 14, textTransform: "uppercase" }}>Últimos 15 Lançamentos</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto", paddingRight: 6 }}>
                 {ultimosLancamentos.length === 0 ? (
                   <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "20px 0" }}>Nenhum lançamento recente</div>
@@ -924,56 +890,51 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
           </div>
 
           <main style={{ padding: 24, maxWidth: 1400, margin: "0 auto", flex: 1, width: "100%" }}>
-            {selId && clientData ? (
-              <ClientDetail data={clientData} onDeleteConsumo={deleteConsumo} onUpdateMethod={updateMethod} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} />
-            ) : (
-              <>
-                <Card style={{ marginBottom: 24, padding: 22 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 16, letterSpacing: .5 }}>EVOLUÇÃO GERAL DE VENDAS DO SISTEMA (R$)</div>
-                  {mainChartData.length > 0 ? (
-                    <div style={{ height: 220, width: "100%" }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={mainChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} tickFormatter={v => v.toLocaleString('pt-BR')} />
-                          <Tooltip formatter={(v) => [BRL(v), "Total"]} labelStyle={{ color: '#111', fontWeight: 800, marginBottom: 4 }} contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", fontWeight: 700, fontSize: 13 }} />
-                          <Bar dataKey="Total" barSize={30} fill="#C7D2FE" radius={[6, 6, 0, 0]} />
-                          <Line type="monotone" dataKey="Total" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: "#4F46E5", strokeWidth: 2, stroke: "#fff" }} />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px 0", fontSize: 13, fontWeight: 600 }}>Nenhuma venda registrada ainda.</div>
-                  )}
-                </Card>
-
-                <div style={{ display: "inline-flex", gap: 2, background: "#E5E7EB", borderRadius: 12, padding: 4, marginBottom: 20 }}>
-                  {[{ id: "clientes", label: "Clientes", Icon: Users }, { id: "faturas", label: "Faturas", Icon: Receipt }].map(t => (
-                    <button key={t.id} onClick={() => navigate(`/consumo${t.id === 'faturas' ? '/faturas' : ''}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
-                  ))}
+            <Card style={{ marginBottom: 24, padding: 22 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 16, letterSpacing: .5 }}>EVOLUÇÃO GERAL DE VENDAS DO SISTEMA (R$)</div>
+              {mainChartData.length > 0 ? (
+                <div style={{ height: 220, width: "100%" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={mainChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} tickFormatter={v => v.toLocaleString('pt-BR')} />
+                      <Tooltip formatter={(v) => [BRL(v), "Total"]} labelStyle={{ color: '#111', fontWeight: 800, marginBottom: 4 }} contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", fontWeight: 700, fontSize: 13 }} />
+                      <Bar dataKey="Total" barSize={30} fill="#C7D2FE" radius={[6, 6, 0, 0]} />
+                      <Line type="monotone" dataKey="Total" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: "#4F46E5", strokeWidth: 2, stroke: "#fff" }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
+              ) : (
+                <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px 0", fontSize: 13, fontWeight: 600 }}>Nenhuma venda registrada ainda.</div>
+              )}
+            </Card>
 
-                {tab === "clientes" ? (
-                  <div>
-                    <div className="search-bar-container">
-                      <div className="search-input-wrapper">
-                        <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por razão social, e-mail..." style={{ width: "100%", padding: "11px 12px 11px 36px", borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 14, background: "#fff", fontFamily: "inherit", outline: "none" }} />
-                      </div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <Btn variant={showActive ? "primary" : "secondary"} onClick={() => setShowActive(!showActive)} style={{ padding: "10px 14px", fontSize: 12 }}>Ativos</Btn>
-                        <Btn variant={showInactive ? "primary" : "secondary"} onClick={() => setShowInactive(!showInactive)} style={{ padding: "10px 14px", fontSize: 12 }}>Inativos</Btn>
-                      </div>
-                    </div>
-                    <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={(id) => navigate(`/consumo/cliente/${id}`)} onAddConsumo={addConsumo} onToast={showToast} />
+            <div style={{ display: "inline-flex", gap: 2, background: "#E5E7EB", borderRadius: 12, padding: 4, marginBottom: 20 }}>
+              {[{ id: "clientes", label: "Clientes", Icon: Users }, { id: "faturas", label: "Faturas", Icon: Receipt }].map(t => (
+                <button key={t.id} onClick={() => navigate(`/consumo${t.id === 'faturas' ? '/faturas' : ''}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t.id ? "#fff" : "transparent", color: tab === t.id ? "#111" : "#6B7280", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}><t.Icon size={14} />{t.label}</button>
+              ))}
+            </div>
+
+            {tab === "clientes" ? (
+              <div>
+                <div className="search-bar-container">
+                  <div className="search-input-wrapper">
+                    <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por razão social, e-mail..." style={{ width: "100%", padding: "11px 12px 11px 36px", borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 14, background: "#fff", fontFamily: "inherit", outline: "none" }} />
                   </div>
-                ) : (
-                  <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={(id) => navigate(`/consumo/cliente/${id}`)} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
-                )}
-              </>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Btn variant={showActive ? "primary" : "secondary"} onClick={() => setShowActive(!showActive)} style={{ padding: "10px 14px", fontSize: 12 }}>Ativos</Btn>
+                    <Btn variant={showInactive ? "primary" : "secondary"} onClick={() => setShowInactive(!showInactive)} style={{ padding: "10px 14px", fontSize: 12 }}>Inativos</Btn>
+                  </div>
+                </div>
+                <ClientsTable clients={filteredClients} latestMethodByClient={latestMethodByClient} unpaidTotalsByClient={unpaidTotalsByClient} onSelect={setSelId} onAddConsumo={addConsumo} onToast={showToast} />
+              </div>
+            ) : (
+              <FaturasTab faturas={filteredFaturas} total={filteredTotal} years={years} fy={fy} setFy={setFy} fm={fm} setFm={setFm} fs={fs} setFs={setFs} onSelectClient={setSelId} onSetStatus={setFaturaStatus} onSetMethod={setFaturaMethod} onExportXLSX={exportXLSX} onExportBatch={exportBatch} />
             )}
           </main>
 
+          {clientData && <ClientDetailModal key={clientData.client.id} data={clientData} onDeleteConsumo={deleteConsumo} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} onClose={() => setSelId(null)} />}
           {showModal && <NewClientModal data={form} onChange={setForm} onConfirm={addClient} onClose={() => setShowModal(false)} />}
           {editingClient && <EditClientModal client={editingClient} onUpdate={updateClientInfo} onDelete={removeClient} onClose={() => setEditingClient(null)} />}
         </>
