@@ -72,6 +72,7 @@ function useFormField(id, field) {
   return [value, set];
 }
 
+const filterSelStyle = { padding: "9px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer" };
 const inpBase = { boxSizing: "border-box", padding: "7px 10px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, background: "#FAFAFA", outline: "none", fontFamily: "inherit" };
 
 function InlineConsumo({ value, onSave }) {
@@ -127,11 +128,11 @@ function InlineRowInputs({ funcId, onAddEntry }) {
 }
 
 /* ─── Detalhes do Funcionário (Página Interna) ─── */
-function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit, onExportFuncionarioMes }) {
+function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit, onExportFuncionarioMes, onClose }) {
   const [dt, setDt] = useState(todayStr());
   const [val, setVal] = useState("");
-
-  if (!func) return null;
+  const [fy, setFy] = useState(() => String(new Date().getFullYear()));
+  const [fm, setFm] = useState(() => String(new Date().getMonth() + 1));
 
   const handleLancar = () => {
     const v = parseFloat(String(val).replace(",", "."));
@@ -159,8 +160,22 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
     });
   }, [func.entries, folhaStatus, func.id]);
 
+  const years = useMemo(() => [...new Set(grouped.map(g => g.month.split("-")[0]))].sort().reverse(), [grouped]);
+  const filtered = grouped.filter(g => {
+    const [y, m] = g.month.split("-");
+    if (fy !== "all" && y !== fy) return false;
+    if (fm !== "all" && +m !== +fm) return false;
+    return true;
+  });
+
+  const selStyle = { padding: "8px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer", outline: "none", color: "#374151", fontWeight: 600 };
+
   return (
-    <div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+      <Card style={{ width: "100%", maxWidth: 760, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto", background: "#F7F7F8" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }} title="Fechar"><X size={20} /></button>
+      </div>
       <Card style={{ marginBottom: 20, padding: 22 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
@@ -192,7 +207,25 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
         </div>
       </Card>
 
-      {grouped.map(mData => {
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#111" }}>Folhas e vales</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select value={fy} onChange={e => setFy(e.target.value)} style={selStyle}>
+            <option value="all">Todos os anos</option>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select value={fm} onChange={e => setFm(e.target.value)} style={selStyle}>
+            <option value="all">Todos os meses</option>
+            {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {filtered.length === 0 && (
+        <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 40, textAlign: "center", color: "#9CA3AF" }}>Nenhum lançamento encontrado para este período</div>
+      )}
+
+      {filtered.map(mData => {
         const isPago = mData.status === "PAGO";
         const base = Number(func.salary) || 0;
         const liquido = base - mData.valesTotal - mData.consumo;
@@ -269,6 +302,7 @@ function FuncionarioDetail({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpd
           </Card>
         );
       })}
+      </Card>
     </div>
   );
 }
@@ -352,12 +386,11 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     setPath(newPath);
   };
   
-  const { tab, selId } = useMemo(() => {
+  const { tab } = useMemo(() => {
     const parts = path.split('/').filter(Boolean);
-    if (parts[1] === 'folhas') return { tab: 'folhas', selId: null };
-    if (parts[1] === 'funcionario' && parts[2]) return { tab: 'funcionarios', selId: parts[2] };
-    return { tab: 'funcionarios', selId: null };
+    return { tab: parts[1] === 'folhas' ? 'folhas' : 'funcionarios' };
   }, [path]);
+  const [selId, setSelId] = useState(null);
 
   const [funcionarios, setFuncionarios] = useState([]);
   const [folhaStatus, setFolhaStatus] = useState({});
@@ -365,6 +398,9 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
   const [search, setSearch] = useState("");
   const [showActive, setShowActive] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
+  const [fy, setFy] = useState("all");
+  const [fm, setFm] = useState("all");
+  const [fs, setFs] = useState("all");
   const [editingFuncionario, setEditingFuncionario] = useState(null);
   const [showNewFuncionarioModal, setShowNewFuncionarioModal] = useState(false);
   const [toast, setToast] = useState(null);
@@ -445,6 +481,21 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
     return { groupedFolhas: grouped, totalBrutoGeral: tB, totalValesGeral: tV, totalLiquidoGeral: tL, valesMesAtual: vMes, consumosAtivos: cAtivos };
   }, [funcionarios, folhaStatus]);
+
+  const folhaYears = useMemo(() => [...new Set(Object.keys(groupedFolhas).map(k => k.slice(0, 4)))].sort().reverse(), [groupedFolhas]);
+  const filteredFolhas = useMemo(() => {
+    const res = {};
+    Object.entries(groupedFolhas).forEach(([month, list]) => {
+      const [y, m] = month.split("-");
+      if (fy !== "all" && y !== fy) return;
+      if (fm !== "all" && +m !== +fm) return;
+      const rows = fs === "all" ? list : list.filter(f => f.status === fs);
+      if (rows.length) res[month] = rows;
+    });
+    return res;
+  }, [groupedFolhas, fy, fm, fs]);
+  const filteredFolhasList = useMemo(() => Object.values(filteredFolhas).flat(), [filteredFolhas]);
+  const filteredFolhasTotal = useMemo(() => filteredFolhasList.reduce((s, f) => s + f.liquido, 0), [filteredFolhasList]);
 
   /* ── Actions ── */
   const handleSaveFunc = async (data) => {
@@ -705,12 +756,12 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
 
     // ── Linhas de dados (todos os meses, todos os funcionários) ──
     let grandTotal = 0;
-    Object.keys(groupedFolhas)
+    Object.keys(filteredFolhas)
       .sort((a, b) => b.localeCompare(a))
       .forEach((monthKey) => {
         const [year, monthNum] = monthKey.split("-");
         const monthLabel = `${MONTHS[parseInt(monthNum) - 1]}/${year}`;
-        groupedFolhas[monthKey].forEach((f) => {
+        filteredFolhas[monthKey].forEach((f) => {
           const row = worksheet.addRow([
             monthLabel, f.name, f.pixKey || "Sem PIX",
             f.base, f.vales, f.consumos, f.liquido, f.status,
@@ -735,7 +786,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `folhas-todas-exportacao.xlsx`);
+    saveAs(new Blob([buffer]), `folhas-${fy}-${fm}.xlsx`);
   };
 
   /* ── Render ── */
@@ -757,9 +808,8 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       `}</style>
 
       {/* ── HEADER ── */}
-      <AppHeader subtitle="Controle de salários e vales" onMenu={onBack} onVoltar={selId ? () => navigate('/salario') : undefined}>
-        {!selId && (
-          <>
+      <AppHeader subtitle="Controle de salários e vales" onMenu={onBack}>
+        <>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 10, fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
               <div style={{ width: 24, height: 24, borderRadius: 6, background: "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <User size={12} color="#4B5563" />
@@ -767,24 +817,11 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
               {empresaNome || empresaEmail}
             </div>
             <Btn onClick={() => setShowNewFuncionarioModal(true)}><Plus size={15} /> Novo Funcionário</Btn>
-          </>
-        )}
+        </>
         <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 8 }} title="Sair"><LogOut size={18} /></button>
       </AppHeader>
 
       <main style={{padding:24,maxWidth:1400,margin:"0 auto", flex: 1, width: "100%"}}>
-      {selId && funcData ? (
-        <FuncionarioDetail
-          func={funcData}
-          folhaStatus={folhaStatus}
-          onAddEntry={handleAddEntry}
-          onDeleteEntry={handleDeleteEntry}
-          onUpdateFolhaExtra={handleUpdateFolhaExtra}
-          onOpenEdit={() => setEditingFuncionario(funcData)}
-          onExportFuncionarioMes={exportFuncionarioMes}
-        />
-      ) : (
-        <>
         {/* ── DASHBOARD ── */}
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -865,7 +902,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                   <tbody>
                     {filteredFuncs.map((f, idx) => (
                       <tr key={f.id} style={{ borderTop: "1px solid #F3F4F6", background: idx % 2 === 0 ? "#fff" : "#FAFAFA", opacity: f.active ? 1 : 0.6 }}>
-                        <td onClick={() => navigate(`/salario/funcionario/${f.id}`)} title="Ver detalhes do funcionário" style={{padding:"16px 16px 16px 20px", cursor:"pointer"}}>
+                        <td onClick={() => setSelId(f.id)} title="Ver detalhes do funcionário" style={{padding:"16px 16px 16px 20px", cursor:"pointer"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#10B981)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
                             <div>
@@ -894,22 +931,32 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         ) : (
           /* ── ABA FOLHA DE PAGAMENTO ── */
           <div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <select value={fy} onChange={e => setFy(e.target.value)} style={filterSelStyle}><option value="all">Todos os anos</option>{folhaYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
+              <select value={fm} onChange={e => setFm(e.target.value)} style={filterSelStyle}><option value="all">Todos os meses</option>{MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}</select>
+              <select value={fs} onChange={e => setFs(e.target.value)} style={filterSelStyle}><option value="all">Todos os status</option><option value="PENDENTE">PENDENTE</option><option value="PAGO">PAGO</option></select>
+            </div>
+
             {/* Barra de total + botão Exportar global (= exportBatch do CC) */}
             <div style={{ background: "#D1FAE5", borderRadius: 14, padding: 18, marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 4, letterSpacing: .5 }}>TOTAL LÍQUIDO GERAL</div>
-                <div style={{ fontSize: 26, fontWeight: 900, color: "#065F46" }}>{BRL(totalLiquidoGeral)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 4, letterSpacing: .5 }}>TOTAL FILTRADO</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: "#065F46" }}>{BRL(filteredFolhasTotal)}</div>
                 <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#047857", background: "#A7F3D0", padding: "2px 8px", borderRadius: 99, marginTop: 6 }}>
-                  {Object.values(groupedFolhas).reduce((s, l) => s + l.length, 0)} registros
+                  {filteredFolhasList.length} registro{filteredFolhasList.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <Btn variant="success" onClick={exportBatch} style={{ padding: "10px 18px" }}><Download size={15} /> Exportar XLSX</Btn>
             </div>
 
-            {Object.keys(groupedFolhas).sort((a, b) => b.localeCompare(a)).map(monthKey => {
+            {filteredFolhasList.length === 0 && (
+              <div style={{ border: "2px dashed #E5E7EB", borderRadius: 16, padding: 60, textAlign: "center", color: "#9CA3AF" }}>Nenhuma folha encontrada com estes filtros</div>
+            )}
+
+            {Object.keys(filteredFolhas).sort((a, b) => b.localeCompare(a)).map(monthKey => {
               const monthName = MONTHS[parseInt(monthKey.split("-")[1]) - 1];
               const year = monthKey.split("-")[0];
-              const fList = groupedFolhas[monthKey];
+              const fList = filteredFolhas[monthKey];
               const monthTotalLiquido = fList.reduce((s, x) => s + x.liquido, 0);
 
               return (
@@ -968,9 +1015,21 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
             })}
           </div>
         )}
-        </>
-      )}
       </main>
+
+      {funcData && (
+        <FuncionarioDetailModal
+          key={funcData.id}
+          func={funcData}
+          folhaStatus={folhaStatus}
+          onAddEntry={handleAddEntry}
+          onDeleteEntry={handleDeleteEntry}
+          onUpdateFolhaExtra={handleUpdateFolhaExtra}
+          onOpenEdit={() => setEditingFuncionario(funcData)}
+          onExportFuncionarioMes={exportFuncionarioMes}
+          onClose={() => setSelId(null)}
+        />
+      )}
 
       {showNewFuncionarioModal && (
         <FuncionarioModal 
