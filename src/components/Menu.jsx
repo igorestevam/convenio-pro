@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { LogOut, Receipt, Briefcase, Settings, X, Edit3, Shield, User as UserIcon } from "lucide-react";
+import { LogOut, Receipt, Briefcase, Truck, Settings, X, Edit3, Shield, User as UserIcon } from "lucide-react";
 import ConsumoCliente from "./ConsumoCliente";
 import SalarioFuncionario from "./SalarioFuncionario";
+import Despesas from "./Despesas";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
 
 
 /* ─── Micro Componentes de UI ─── */
@@ -42,6 +44,7 @@ function Toast({ msg, type, onDone }) {
 
 /* ─── Modal de Edição de Conta (Padrão Profissional) ─── */
 function ProfileModal({ token, initialName, initialEmail, onClose, onLogout }) {
+  useLockBodyScroll();
   // Controle de Telas do Pop-up
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPwd, setIsChangingPwd] = useState(false);
@@ -196,7 +199,7 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
     setPath(newPath);
   };
 
-  const activeTab = path.startsWith('/consumo') ? 'consumo' : path.startsWith('/salario') ? 'salario' : 'home';
+  const activeTab = path.startsWith('/consumo') ? 'consumo' : path.startsWith('/salario') ? 'salario' : path.startsWith('/despesas') ? 'despesas' : 'home';
 
   if (activeTab === 'consumo') {
     return <ConsumoCliente token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => navigate('/')} onLogout={onLogout} />;
@@ -204,6 +207,10 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
 
   if (activeTab === 'salario') {
     return <SalarioFuncionario token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => navigate('/')} onLogout={onLogout} />;
+  }
+
+  if (activeTab === 'despesas') {
+    return <Despesas token={token} empresaEmail={empresaEmail} empresaNome={empresaNome} onBack={() => navigate('/')} onLogout={onLogout} />;
   }
 
   return (
@@ -258,6 +265,14 @@ export default function Menu({ token, empresaEmail, empresaNome, onLogout }) {
             </div>
             <h2 style={{fontSize: 20, fontWeight: 900, marginBottom: 8}}>Salário de Funcionários</h2>
             <p style={{color: "#6B7280", fontSize: 14, lineHeight: 1.5}}>Controle a folha de pagamento, vales, adiantamentos e o fechamento mensal da equipe.</p>
+          </Card>
+
+          <Card style={{cursor: "pointer", padding: 32, border: "2px solid transparent"}} onClick={() => navigate('/despesas')} className="menu-card">
+            <div style={{width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#EA580C,#F97316)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20}}>
+              <Truck size={28} color="#fff" />
+            </div>
+            <h2 style={{fontSize: 20, fontWeight: 900, marginBottom: 8}}>Despesas</h2>
+            <p style={{color: "#6B7280", fontSize: 14, lineHeight: 1.5}}>Cadastre fornecedores, lance despesas e acompanhe o que está pago e em aberto.</p>
           </Card>
         </div>
       </div>

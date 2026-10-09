@@ -9,6 +9,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import AppHeader from "./AppHeader";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
@@ -112,6 +113,7 @@ function Toast({ msg, type, onDone }) {
 /* ═══ Modais ═════════════════════════════════════════════════════════════ */
 
 function NewClientModal({ data, onChange, onConfirm, onClose }) {
+  useLockBodyScroll();
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
       <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
@@ -142,6 +144,7 @@ function NewClientModal({ data, onChange, onConfirm, onClose }) {
 }
 
 function EditClientModal({ client, onUpdate, onDelete, onClose }) {
+  useLockBodyScroll();
   const [form, setForm] = useState({ name: client.name, email: client.email || "", phone: client.phone || "", active: client.active !== false });
   const canDelete = client.consumos.length === 0;
 
@@ -276,9 +279,37 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
   );
 }
 
+/* ═══ Valor editável do consumo ═══════════════════════════════════════════ */
+
+function ConsumoValue({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState("");
+  const start = () => { setVal(String(value).replace(".", ",")); setEditing(true); };
+  const commit = () => {
+    const v = parseFloat(String(val).replace(",", "."));
+    if (isNaN(v) || v <= 0) return;
+    if (v !== value) onSave(Math.round(v * 100) / 100);
+    setEditing(false);
+  };
+  if (!editing) return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      {BRL(value)}
+      <button onClick={start} title="Editar valor" style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 2, display: "flex" }}><Edit size={12} /></button>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <input type="text" value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }} autoFocus style={{ ...inpBase, width: 90, textAlign: "right", padding: "5px 8px", fontWeight: 800 }} />
+      <button onClick={commit} title="Salvar" style={{ background: "linear-gradient(135deg,#4F46E5,#6D28D9)", color: "#fff", border: "none", padding: "5px 8px", borderRadius: 8, cursor: "pointer", display: "flex" }}><CheckCircle2 size={13} /></button>
+      <button onClick={() => setEditing(false)} title="Cancelar" style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, display: "flex" }}><X size={14} /></button>
+    </div>
+  );
+}
+
 /* ═══ ClientDetailModal ══════════════════════════════════════════════════ */
 
-function ClientDetailModal({ data, onDeleteConsumo, onSetStatus, onExportXLSX, onOpenEdit, onClose }) {
+function ClientDetailModal({ data, onDeleteConsumo, onUpdateConsumo, onSetStatus, onExportXLSX, onOpenEdit, onClose }) {
+  useLockBodyScroll();
   const { client, faturas, totalAberto, totalGeralCliente } = data;
 
   const [fy, setFy] = useState(() => String(new Date().getFullYear()));
@@ -381,7 +412,7 @@ function ClientDetailModal({ data, onDeleteConsumo, onSetStatus, onExportXLSX, o
                   {[...f.consumos].sort((a, b) => a.date.localeCompare(b.date)).map(c => (
                     <tr key={c.id} style={{ borderTop: "1px solid #F3F4F6" }}>
                       <td style={{ padding: "10px 16px", color: "#374151", whiteSpace: "nowrap" }}>{fmtD(c.date)}</td>
-                      <td style={{ padding: "10px 16px", fontWeight: 800, color: "#111", whiteSpace: "nowrap" }}>{BRL(c.value)}</td>
+                      <td style={{ padding: "8px 16px", fontWeight: 800, color: "#111", whiteSpace: "nowrap" }}><ConsumoValue value={c.value} onSave={v => onUpdateConsumo(client.id, c.id, v)} /></td>
                       <td style={{ padding: "10px 16px", textAlign: "right" }}><button onClick={() => handleDeleteConsumo(c.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, borderRadius: 6 }}><Trash2 size={13} /></button></td>
                     </tr>
                   ))}
@@ -693,6 +724,13 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
     } catch (err) { showToast("Erro", "error"); }
   };
 
+  const updateConsumo = async (clientId, consumoId, value) => {
+    try {
+      await fetchAPI(`/clientes/${clientId}/consumos/${consumoId}`, { method: 'PATCH', body: JSON.stringify({ value }) });
+      setClients(p => p.map(c => c.id === clientId ? { ...c, consumos: c.consumos.map(x => x.id === consumoId ? { ...x, value } : x) } : c)); showToast("Valor atualizado!");
+    } catch (err) { showToast("Erro ao atualizar", "error"); }
+  };
+
   const deleteConsumo = async (clientId, consumoId) => {
     try {
       await fetchAPI(`/clientes/${clientId}/consumos/${consumoId}`, { method: 'DELETE' });
@@ -930,7 +968,7 @@ export default function ConsumoCliente({ token, empresaEmail, empresaNome, onBac
             )}
           </main>
 
-          {clientData && <ClientDetailModal key={clientData.client.id} data={clientData} onDeleteConsumo={deleteConsumo} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} onClose={() => setSelId(null)} />}
+          {clientData && <ClientDetailModal key={clientData.client.id} data={clientData} onDeleteConsumo={deleteConsumo} onUpdateConsumo={updateConsumo} onSetStatus={setFaturaStatus} onExportXLSX={exportXLSX} onOpenEdit={() => setEditingClient(clientData.client)} onClose={() => setSelId(null)} />}
           {showModal && <NewClientModal data={form} onChange={setForm} onConfirm={addClient} onClose={() => setShowModal(false)} />}
           {editingClient && <EditClientModal client={editingClient} onUpdate={updateClientInfo} onDelete={removeClient} onClose={() => setEditingClient(null)} />}
         </>

@@ -37,4 +37,20 @@ const FolhaExtraSchema = new mongoose.Schema({
 const Funcionario = mongoose.model('Funcionario', FuncionarioSchema);
 const FolhaExtra = mongoose.model('FolhaExtra', FolhaExtraSchema);
 
-module.exports = { Empresa, Cliente, FatExtra, Funcionario, FolhaExtra };
+const DespesaSchema = new mongoose.Schema({ id: String, date: String, value: Number, methodId: String, status: { type: String, default: 'PENDENTE' } });
+
+const FornecedorSchema = new mongoose.Schema({
+  id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+  name: String, tradeName: String, cnpj: String, email: String, phone: String, category: String, pixKey: String, notes: String,
+  address: { cep: String, street: String, number: String, complement: String, district: String, city: String, uf: String },
+  active: { type: Boolean, default: true }, createdAt: { type: Date, default: Date.now }, despesas: [DespesaSchema]
+});
+
+const FormaPagamentoSchema = new mongoose.Schema({
+  id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, name: String
+});
+
+const Fornecedor = mongoose.model('Fornecedor', FornecedorSchema);
+const FormaPagamento = mongoose.model('FormaPagamento', FormaPagamentoSchema);
+
+module.exports = { Empresa, Cliente, FatExtra, Funcionario, FolhaExtra, Fornecedor, FormaPagamento };

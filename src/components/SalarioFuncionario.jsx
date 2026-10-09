@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import AppHeader from "./AppHeader";
 
 
@@ -129,6 +130,7 @@ function InlineRowInputs({ funcId, onAddEntry }) {
 
 /* ─── Detalhes do Funcionário (Página Interna) ─── */
 function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, onUpdateFolhaExtra, onOpenEdit, onExportFuncionarioMes, onClose }) {
+  useLockBodyScroll();
   const [dt, setDt] = useState(todayStr());
   const [val, setVal] = useState("");
   const [fy, setFy] = useState(() => String(new Date().getFullYear()));
@@ -309,6 +311,7 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
 
 /* ─── Modais ─── */
 function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
+  useLockBodyScroll();
   const [form, setForm] = useState(
     isEdit ? data : { name: "", salary: "", email: "", phone: "", hasPayslip: true, pixKey: "", active: true }
   );

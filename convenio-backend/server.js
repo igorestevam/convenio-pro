@@ -15,7 +15,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_segredo_convenio_pro_2026';
 
-const { Empresa, Cliente, FatExtra, Funcionario, FolhaExtra } = require('./models');
+const { Empresa, Cliente, FatExtra, Funcionario, FolhaExtra, Fornecedor, FormaPagamento } = require('./models');
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.header('Authorization');
@@ -80,6 +80,14 @@ app.post('/api/clientes/:id/consumos', authMiddleware, async (req, res) => {
   const c = await Cliente.findOne({ id: req.params.id, empresaId: req.empresa.id });
   if (!c) return res.status(404).json({ erro: 'Não encontrado' });
   c.consumos.push(req.body); await c.save(); res.json(c);
+});
+app.patch('/api/clientes/:id/consumos/:consumoId', authMiddleware, async (req, res) => {
+  const value = Number(req.body.value);
+  if (!(value > 0)) return res.status(400).json({ erro: 'Valor inválido.' });
+  const c = await Cliente.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  const consumo = c && c.consumos.find(x => x.id === req.params.consumoId);
+  if (!consumo) return res.status(404).json({ erro: 'Não encontrado' });
+  consumo.value = value; await c.save(); res.json(consumo);
 });
 app.delete('/api/clientes/:id/consumos/:consumoId', authMiddleware, async (req, res) => {
   const c = await Cliente.findOne({ id: req.params.id, empresaId: req.empresa.id });
@@ -147,6 +155,70 @@ app.post('/api/folhaextras/:key', authMiddleware, async (req, res) => {
     { $set: update },
     { upsert: true }
   );
+  res.json({ success: true });
+});
+
+// ROTAS DE FORNECEDORES
+const FORNECEDOR_CAMPOS = ['name', 'tradeName', 'cnpj', 'email', 'phone', 'category', 'pixKey', 'notes', 'address', 'active'];
+const pickFornecedor = (body) => Object.fromEntries(FORNECEDOR_CAMPOS.filter(k => body[k] !== undefined).map(k => [k, body[k]]));
+
+app.get('/api/fornecedores', authMiddleware, async (req, res) => res.json(await Fornecedor.find({ empresaId: req.empresa.id })));
+app.post('/api/fornecedores', authMiddleware, async (req, res) => {
+  res.json(await (new Fornecedor({ ...pickFornecedor(req.body), id: req.body.id, empresaId: req.empresa.id })).save());
+});
+app.put('/api/fornecedores/:id', authMiddleware, async (req, res) => {
+  const f = await Fornecedor.findOneAndUpdate({ id: req.params.id, empresaId: req.empresa.id }, pickFornecedor(req.body), { new: true });
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  res.json(f);
+});
+app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
+  const f = await Fornecedor.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  if (f.despesas.length > 0) return res.status(400).json({ erro: 'Não é possível excluir um fornecedor com despesas.' });
+  await Fornecedor.deleteOne({ _id: f._id });
+  res.json({ success: true });
+});
+
+// ROTAS DE DESPESAS (dentro do fornecedor)
+app.post('/api/fornecedores/:id/despesas', authMiddleware, async (req, res) => {
+  const f = await Fornecedor.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (!f) return res.status(404).json({ erro: 'Não encontrado' });
+  const { id, date, value, methodId, status } = req.body;
+  f.despesas.push({ id, date, value, methodId, status }); await f.save(); res.json(f);
+});
+app.patch('/api/fornecedores/:id/despesas/:despesaId', authMiddleware, async (req, res) => {
+  const f = await Fornecedor.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  const d = f && f.despesas.find(x => x.id === req.params.despesaId);
+  if (!d) return res.status(404).json({ erro: 'Não encontrado' });
+  ['date', 'value', 'methodId', 'status'].forEach(k => { if (req.body[k] !== undefined) d[k] = req.body[k]; });
+  await f.save(); res.json(d);
+});
+app.delete('/api/fornecedores/:id/despesas/:despesaId', authMiddleware, async (req, res) => {
+  const f = await Fornecedor.findOne({ id: req.params.id, empresaId: req.empresa.id });
+  if (f) { f.despesas = f.despesas.filter(x => x.id !== req.params.despesaId); await f.save(); }
+  res.json({ success: true });
+});
+
+// ROTAS DE FORMAS DE PAGAMENTO (já nascem com Boleto, PIX, Dinheiro e Cartão)
+const FORMAS_PADRAO = [['boleto', 'Boleto'], ['pix', 'PIX'], ['dinheiro', 'Dinheiro'], ['cartao', 'Cartão']];
+app.get('/api/formas-pagamento', authMiddleware, async (req, res) => {
+  let formas = await FormaPagamento.find({ empresaId: req.empresa.id });
+  if (formas.length === 0) formas = await FormaPagamento.insertMany(FORMAS_PADRAO.map(([id, name]) => ({ id, name, empresaId: req.empresa.id })));
+  res.json(formas);
+});
+app.post('/api/formas-pagamento', authMiddleware, async (req, res) => {
+  res.json(await (new FormaPagamento({ id: req.body.id, name: req.body.name, empresaId: req.empresa.id })).save());
+});
+app.put('/api/formas-pagamento/:id', authMiddleware, async (req, res) => {
+  const fp = await FormaPagamento.findOneAndUpdate({ id: req.params.id, empresaId: req.empresa.id }, { name: req.body.name }, { new: true });
+  if (!fp) return res.status(404).json({ erro: 'Não encontrado' });
+  res.json(fp);
+});
+app.delete('/api/formas-pagamento/:id', authMiddleware, async (req, res) => {
+  const emUso = await Fornecedor.exists({ empresaId: req.empresa.id, 'despesas.methodId': req.params.id });
+  if (emUso) return res.status(400).json({ erro: 'Esta forma de pagamento está em uso por alguma despesa.' });
+  if (await FormaPagamento.countDocuments({ empresaId: req.empresa.id }) <= 1) return res.status(400).json({ erro: 'Mantenha pelo menos uma forma de pagamento.' });
+  await FormaPagamento.deleteOne({ id: req.params.id, empresaId: req.empresa.id });
   res.json({ success: true });
 });
 
