@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, ChevronRight, User, Mail, Phone } from "lucide-react";
+import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, User, Mail, Phone } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
@@ -861,13 +861,12 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                       <th style={{padding:"11px 16px 11px 20px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>FUNCIONÁRIO</th>
                       <th style={{padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>SALÁRIO BASE</th>
                       <th style={{padding:"11px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>LANÇAR VALE (DATA E VALOR)</th>
-                      <th style={{padding:"11px 16px",textAlign:"center",fontSize:10,fontWeight:800,color:"#9CA3AF",letterSpacing:.6}}>DETALHE</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredFuncs.map((f, idx) => (
                       <tr key={f.id} style={{ borderTop: "1px solid #F3F4F6", background: idx % 2 === 0 ? "#fff" : "#FAFAFA", opacity: f.active ? 1 : 0.6 }}>
-                        <td style={{padding:"16px 16px 16px 20px"}}>
+                        <td onClick={() => navigate(`/salario/funcionario/${f.id}`)} title="Ver detalhes do funcionário" style={{padding:"16px 16px 16px 20px", cursor:"pointer"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div style={{ width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#059669,#10B981)",display:"flex",alignItems:"center",justifyContent:"center", color:"#fff", fontWeight: 900, flexShrink:0 }}>{f.name.charAt(0)}</div>
                             <div>
@@ -886,9 +885,6 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                         </td>
                         <td style={{padding:"12px 16px", fontWeight: 800, color: "#374151"}}>{BRL(f.salary)}</td>
                         <td style={{padding:"12px 16px"}}><InlineRowInputs funcId={f.id} onAddEntry={handleAddEntry} /></td>
-                        <td style={{padding:"12px 16px", textAlign: "center"}}>
-                          <button onClick={() => navigate(`/salario/funcionario/${f.id}`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "1px solid #E5E7EB", background: "#fff", color: "#059669", cursor: "pointer", fontFamily: "inherit" }}>Ver <ChevronRight size={12} /></button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>

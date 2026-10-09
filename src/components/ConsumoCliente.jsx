@@ -3,7 +3,7 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } 
 import {
   Users, Plus, Download, Search, Trash2,
   CreditCard, QrCode, Clock, FilePlus, Send, CheckCircle2,
-  Mail, Phone, Receipt, User, X, ChevronRight, LogOut, Edit, Loader2
+  Mail, Phone, Receipt, User, X, LogOut, Edit, Loader2
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -245,7 +245,7 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#F9FAFB" }}>
-              <th style={{ ...thStyle, paddingLeft: 20 }}>CLIENTE</th><th style={thStyle}>DATA</th><th style={thStyle}>VALOR (R$)</th><th style={thStyle}></th><th style={thStyle}>EM ABERTO</th><th style={thStyle}>ÚLT. MÉTODO</th><th style={{ ...thStyle, textAlign: "center" }}>DETALHE</th>
+              <th style={{ ...thStyle, paddingLeft: 20 }}>CLIENTE</th><th style={thStyle}>DATA</th><th style={thStyle}>VALOR (R$)</th><th style={thStyle}></th><th style={thStyle}>EM ABERTO</th><th style={thStyle}>ÚLT. MÉTODO</th>
             </tr>
           </thead>
           <tbody>
@@ -254,7 +254,7 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
               const latestMethod = latestMethodByClient[client.id] || client.method;
               return (
                 <tr key={client.id} style={{ background: idx % 2 === 0 ? "#fff" : "#FAFAFA", borderTop: idx === 0 ? "none" : "1px solid #F3F4F6", opacity: client.active === false ? 0.5 : 1 }}>
-                  <td style={{ padding: "12px 16px 12px 20px", minWidth: 180 }}>
+                  <td onClick={() => onSelect(client.id)} title="Ver detalhes do cliente" style={{ padding: "12px 16px 12px 20px", minWidth: 180, cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#fff" /></div>
                       <div><div style={{ fontWeight: 800, color: "#111", fontSize: 13 }}>{client.name} {client.active === false && <span style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, marginLeft: 4 }}>(Inativo)</span>}</div>{client.phone && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{client.phone}</div>}</div>
@@ -267,9 +267,6 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
                     <Chip color="#15803D" bg="#DCFCE7">{BRL(totalAberto)}</Chip>
                   </td>
                   <td style={{ padding: "12px 16px" }}><MethodChip method={latestMethod} /></td>
-                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                    <button onClick={() => onSelect(client.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "1px solid #E5E7EB", background: "#fff", color: "#4F46E5", cursor: "pointer", fontFamily: "inherit" }}>Ver <ChevronRight size={12} /></button>
-                  </td>
                 </tr>
               );
             })}
