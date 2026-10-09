@@ -15,42 +15,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_segredo_convenio_pro_2026';
 
-const EmpresaSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-});
-
-// REMOVIDO: campo 'desc'
-const ConsumoSchema = new mongoose.Schema({ id: String, date: String, value: Number });
-
-// ADICIONADO: campo 'active'
-const ClienteSchema = new mongoose.Schema({
-  id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
-  name: String, email: String, phone: String, method: String, active: { type: Boolean, default: true }, consumos: [ConsumoSchema]
-});
-
-const FatExtraSchema = new mongoose.Schema({
-  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String, method: String
-});
-
-const Empresa = mongoose.model('Empresa', EmpresaSchema);
-const Cliente = mongoose.model('Cliente', ClienteSchema);
-const FatExtra = mongoose.model('FatExtra', FatExtraSchema);
-
-const EntrySchema = new mongoose.Schema({ id: String, date: String, value: Number, type: String });
-
-const FuncionarioSchema = new mongoose.Schema({
-  id: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
-  name: String, email: String, phone: String, salary: Number, consumo: { type: Number, default: 0 }, hasPayslip: Boolean, pixKey: String, active: { type: Boolean, default: true }, entries: [EntrySchema]
-});
-
-const FolhaExtraSchema = new mongoose.Schema({
-  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String, consumo: Number
-});
-
-const Funcionario = mongoose.model('Funcionario', FuncionarioSchema);
-const FolhaExtra = mongoose.model('FolhaExtra', FolhaExtraSchema);
+const { Empresa, Cliente, FatExtra, Funcionario, FolhaExtra } = require('./models');
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.header('Authorization');

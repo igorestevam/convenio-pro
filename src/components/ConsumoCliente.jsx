@@ -8,6 +8,7 @@ import {
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
+import { API_URL } from "../config";
 import AppHeader from "./AppHeader";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
@@ -31,8 +32,6 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 let _uid = Date.now();
 const uid = () => String(++_uid);
 
-/* ─── API BASE URL ──────────────────────────────────────────────── */
-const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
 /* ═══ Shared UI ═════════════════════════════════════════════════════════ */
 

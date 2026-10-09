@@ -3,10 +3,9 @@ import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, U
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
+import { API_URL } from "../config";
 import AppHeader from "./AppHeader";
 
-/* ─── API BASE URL ─── */
-const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
 /* ─── Constants & Helpers ─── */
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];

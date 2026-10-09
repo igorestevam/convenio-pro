@@ -3,8 +3,8 @@ import { LogOut, Receipt, Briefcase, Settings, X, Edit3, Shield, User as UserIco
 import ConsumoCliente from "./ConsumoCliente";
 import SalarioFuncionario from "./SalarioFuncionario";
 import AppFooter from "./AppFooter";
+import { API_URL } from "../config";
 
-const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
 /* ─── Micro Componentes de UI ─── */
 function Card({ children, style = {}, onClick, className }) {

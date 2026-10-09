@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import AppFooter from "./AppFooter"; // <-- Importação do seu novo Footer
+import { API_URL } from "../config";
 
-const API_URL = 'https://convenio-api-nrfx.onrender.com/api';
 
 function Btn({ children, onClick, disabled = false, style = {} }) {
   return (
