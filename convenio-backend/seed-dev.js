@@ -51,16 +51,16 @@ const FUNCIONARIOS = [
 
 // [razão social, fantasia, cnpj, email, telefone, categoria, pix, endereço, ativo, obs]
 const FORNECEDORES = [
-  ['Distribuidora de Alimentos Paulista Ltda', 'DAP Alimentos', '90.817.263/0001-80', 'vendas@dapalimentos.com.br', '(11) 3456-7890', 'Alimentos', '90.817.263/0001-80', ['01310-100', 'Avenida Paulista', '1000', 'Sala 12', 'Bela Vista', 'São Paulo', 'SP'], true, 'Entrega às terças e sextas. Pedido mínimo R$ 500.'],
-  ['Bebidas Geladas Comércio S.A.', 'Gelada Bebidas', '90.817.264/0001-25', 'pedidos@gelada.com.br', '(11) 4002-8922', 'Bebidas', 'pedidos@gelada.com.br', ['04538-133', 'Avenida Brigadeiro Faria Lima', '3477', '', 'Itaim Bibi', 'São Paulo', 'SP'], true, ''],
-  ['Hortifruti Vale Verde Eireli', 'Vale Verde', '90.817.265/0001-70', '', '(11) 99876-5432', 'Hortifruti', '(11) 99876-5432', ['07190-100', 'Rodovia Hélio Smidt', 's/n', 'Box 45', 'Cumbica', 'Guarulhos', 'SP'], true, 'Falar com o Sr. Antônio.'],
-  ['Frigorífico Boi Bom Ltda', 'Boi Bom', '90.817.266/0001-14', 'comercial@boibom.com.br', '(11) 3333-4444', 'Carnes', '', ['09715-000', 'Rua Marechal Deodoro', '250', '', 'Centro', 'São Bernardo do Campo', 'SP'], true, ''],
-  ['Higiene Total Produtos de Limpeza ME', 'Higiene Total', '90.817.267/0001-69', 'contato@higienetotal.com', '', 'Limpeza', '90.817.267/0001-69', ['02012-000', 'Rua Voluntários da Pátria', '1500', '', 'Santana', 'São Paulo', 'SP'], true, ''],
+  ['Distribuidora de Alimentos Paulista Ltda', 'DAP Alimentos', '00.000.010/0001-27', 'vendas@dapalimentos.com.br', '(11) 3456-7890', 'Alimentos', '00.000.010/0001-27', ['01310-100', 'Avenida Paulista', '1000', 'Sala 12', 'Bela Vista', 'São Paulo', 'SP'], true, 'Entrega às terças e sextas. Pedido mínimo R$ 500.'],
+  ['Bebidas Geladas Comércio S.A.', 'Gelada Bebidas', '00.000.011/0001-71', 'pedidos@gelada.com.br', '(11) 4002-8922', 'Bebidas', 'pedidos@gelada.com.br', ['04538-133', 'Avenida Brigadeiro Faria Lima', '3477', '', 'Itaim Bibi', 'São Paulo', 'SP'], true, ''],
+  ['Hortifruti Vale Verde Eireli', 'Vale Verde', '00.000.012/0001-16', '', '(11) 99876-5432', 'Hortifruti', '(11) 99876-5432', ['07190-100', 'Rodovia Hélio Smidt', 's/n', 'Box 45', 'Cumbica', 'Guarulhos', 'SP'], true, 'Falar com o Sr. Antônio.'],
+  ['Frigorífico Boi Bom Ltda', 'Boi Bom', '00.000.013/0001-60', 'comercial@boibom.com.br', '(11) 3333-4444', 'Carnes', '', ['09715-000', 'Rua Marechal Deodoro', '250', '', 'Centro', 'São Bernardo do Campo', 'SP'], true, ''],
+  ['Higiene Total Produtos de Limpeza ME', 'Higiene Total', '00.000.014/0001-05', 'contato@higienetotal.com', '', 'Limpeza', '00.000.014/0001-05', ['02012-000', 'Rua Voluntários da Pátria', '1500', '', 'Santana', 'São Paulo', 'SP'], true, ''],
   ['Embalagens Pack Fácil Ltda', 'Pack Fácil', '', 'packfacil@gmail.com', '(11) 98765-1111', 'Embalagens', '', ['', '', '', '', '', 'Osasco', 'SP'], true, ''],
-  ['Revenda de Gás Centro Ltda', 'Gás Centro', '90.817.268/0001-03', '', '(11) 3177-7000', 'Gás', '', ['01001-000', 'Praça da Sé', '100', '', 'Sé', 'São Paulo', 'SP'], true, 'Troca de botijão P45 a cada 15 dias.'],
-  ['Refrigeração Polar Manutenção', 'Polar Refrigeração', '90.817.269/0001-58', 'polar.refri@hotmail.com', '(11) 97777-3333', 'Manutenção', 'polar.refri@hotmail.com', ['03102-002', 'Rua do Gasômetro', '80', '', 'Brás', 'São Paulo', 'SP'], true, ''],
-  ['Contabilidade Exata Ltda', 'Exata Contábil', '90.817.270/0001-82', 'atendimento@exatacontabil.com.br', '(11) 3222-1100', 'Serviços', '90.817.270/0001-82', ['01014-000', 'Rua Boa Vista', '254', '8º andar', 'Centro', 'São Paulo', 'SP'], true, ''],
-  ['Laticínios Serra Azul Ltda', 'Serra Azul', '90.817.271/0001-27', 'vendas@serraazul.com.br', '(35) 3471-2000', 'Alimentos', '', ['37500-000', 'Rua Principal', '10', '', 'Centro', 'Itajubá', 'MG'], false, 'Parou de entregar em SP.'],
+  ['Revenda de Gás Centro Ltda', 'Gás Centro', '00.000.015/0001-50', '', '(11) 3177-7000', 'Gás', '', ['01001-000', 'Praça da Sé', '100', '', 'Sé', 'São Paulo', 'SP'], true, 'Troca de botijão P45 a cada 15 dias.'],
+  ['Refrigeração Polar Manutenção', 'Polar Refrigeração', '00.000.016/0001-02', 'polar.refri@hotmail.com', '(11) 97777-3333', 'Manutenção', 'polar.refri@hotmail.com', ['03102-002', 'Rua do Gasômetro', '80', '', 'Brás', 'São Paulo', 'SP'], true, ''],
+  ['Contabilidade Exata Ltda', 'Exata Contábil', '00.000.017/0001-49', 'atendimento@exatacontabil.com.br', '(11) 3222-1100', 'Serviços', '00.000.017/0001-49', ['01014-000', 'Rua Boa Vista', '254', '8º andar', 'Centro', 'São Paulo', 'SP'], true, ''],
+  ['Laticínios Serra Azul Ltda', 'Serra Azul', '00.000.018/0001-93', 'vendas@serraazul.com.br', '(35) 3471-2000', 'Alimentos', '', ['37500-000', 'Rua Principal', '10', '', 'Centro', 'Itajubá', 'MG'], false, 'Parou de entregar em SP.'],
 ];
 
 async function main() {

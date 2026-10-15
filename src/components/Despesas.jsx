@@ -7,6 +7,7 @@ import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import AppHeader from "./AppHeader";
+import CopyButton from "./CopyButton";
 
 
 /* ─── Constants & Helpers ─── */
@@ -128,6 +129,43 @@ const Overlay = ({ children }) => (
   <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>{children}</div>
 );
 
+/* Consulta de CNPJ com várias fontes públicas: se uma falhar (fora do ar, limite de
+   requisições, bloqueio), tenta a próxima. Todas retornam os dados no mesmo formato. */
+const CNPJ_FONTES = [
+  { url: c => `https://brasilapi.com.br/api/cnpj/v1/${c}`, map: d => ({
+    name: d.razao_social, tradeName: d.nome_fantasia, email: d.email, phone: d.ddd_telefone_1,
+    cep: d.cep, street: [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(" "), number: d.numero,
+    complement: d.complemento, district: d.bairro, city: d.municipio, uf: d.uf }) },
+  { url: c => `https://minhareceita.org/${c}`, map: d => ({
+    name: d.razao_social, tradeName: d.nome_fantasia, email: d.email, phone: d.ddd_telefone_1,
+    cep: d.cep, street: [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(" "), number: d.numero,
+    complement: d.complemento, district: d.bairro, city: d.municipio, uf: d.uf }) },
+  { url: c => `https://publica.cnpj.ws/cnpj/${c}`, map: d => { const e = d.estabelecimento || {}; return {
+    name: d.razao_social, tradeName: e.nome_fantasia, email: e.email, phone: `${e.ddd1 || ""}${e.telefone1 || ""}`,
+    cep: e.cep, street: [e.tipo_logradouro, e.logradouro].filter(Boolean).join(" "), number: e.numero,
+    complement: e.complemento, district: e.bairro, city: e.cidade?.nome, uf: e.estado?.sigla }; } },
+  { url: c => `https://open.cnpja.com/office/${c}`, map: d => { const a = d.address || {}; const tel = (d.phones || [])[0]; return {
+    name: d.company?.name, tradeName: d.alias, email: (d.emails || [])[0]?.address, phone: tel ? `${tel.area}${tel.number}` : "",
+    cep: a.zip, street: a.street, number: a.number, complement: a.details, district: a.district, city: a.city, uf: a.state }; } },
+];
+
+async function consultarCNPJ(cnpj) {
+  let naoEncontrado = 0;
+  for (const fonte of CNPJ_FONTES) {
+    try {
+      const r = await fetch(fonte.url(cnpj), { signal: AbortSignal.timeout(8000) });
+      if (r.status === 404) { naoEncontrado++; continue; }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = fonte.map(await r.json());
+      if (!d.name) continue;
+      return { ...d, tradeName: d.tradeName || "", email: (d.email || "").toLowerCase(), phone: d.phone || "", uf: (d.uf || "").toUpperCase() };
+    } catch (err) {
+      console.warn(`Consulta de CNPJ falhou em ${fonte.url(cnpj)}:`, err);
+    }
+  }
+  throw new Error(naoEncontrado > 0 ? "NAO_ENCONTRADO" : "INDISPONIVEL");
+}
+
 /* ─── Modal de Cadastro / Edição ─── */
 function FornecedorModal({ data, isEdit, existing, onClose, onSave, onDelete }) {
   useLockBodyScroll();
@@ -149,27 +187,27 @@ function FornecedorModal({ data, isEdit, existing, onClose, onSave, onDelete }) 
     if (!isValidCNPJ(form.cnpj)) return;
     setBusca("cnpj"); setAviso("");
     try {
-      const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjDigits}`);
-      if (!r.ok) throw new Error();
-      const d = await r.json();
+      const d = await consultarCNPJ(cnpjDigits);
       setForm(f => ({
         ...f,
-        name: d.razao_social || f.name,
-        tradeName: d.nome_fantasia || f.tradeName,
-        email: f.email || (d.email || "").toLowerCase(),
-        phone: f.phone || fmtPhone(d.ddd_telefone_1),
+        name: d.name || f.name,
+        tradeName: d.tradeName || f.tradeName,
+        email: f.email || d.email,
+        phone: f.phone || fmtPhone(d.phone),
         address: {
           cep: fmtCEP(d.cep) || f.address.cep,
-          street: [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(" ") || f.address.street,
-          number: d.numero || f.address.number,
-          complement: d.complemento || f.address.complement,
-          district: d.bairro || f.address.district,
-          city: d.municipio || f.address.city,
+          street: d.street || f.address.street,
+          number: d.number || f.address.number,
+          complement: d.complement || f.address.complement,
+          district: d.district || f.address.district,
+          city: d.city || f.address.city,
           uf: d.uf || f.address.uf,
         },
       }));
-    } catch {
-      setAviso("Não foi possível consultar este CNPJ. Preencha os dados manualmente.");
+    } catch (err) {
+      setAviso(err.message === "NAO_ENCONTRADO"
+        ? "CNPJ não encontrado na Receita. Confira o número ou preencha os dados manualmente."
+        : "Os serviços de consulta de CNPJ não responderam agora. Tente novamente em instantes ou preencha manualmente.");
     } finally { setBusca(null); }
   };
 
@@ -314,7 +352,7 @@ function FornecedorDetailModal({ f, formas, onOpenEdit, onSetDespesa, onDeleteDe
   const address = fmtAddress(f.address);
   const info = [
     { Icon: FileText, value: f.cnpj }, { Icon: Tag, value: f.category }, { Icon: Mail, value: f.email },
-    { Icon: Phone, value: f.phone }, { Icon: KeyRound, value: f.pixKey && `PIX: ${f.pixKey}` }, { Icon: MapPin, value: address },
+    { Icon: Phone, value: f.phone }, { Icon: KeyRound, value: f.pixKey && `PIX: ${f.pixKey}`, copy: f.pixKey }, { Icon: MapPin, value: address },
   ].filter(i => i.value);
 
   return (
@@ -336,7 +374,7 @@ function FornecedorDetailModal({ f, formas, onOpenEdit, onSetDespesa, onDeleteDe
                 </div>
                 {f.tradeName && <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{f.tradeName}</div>}
                 <div style={{ display: "flex", gap: "4px 14px", marginTop: 6, flexWrap: "wrap" }}>
-                  {info.map(({ Icon, value }) => <span key={value} style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Icon size={11} />{value}</span>)}
+                  {info.map(({ Icon, value, copy }) => <span key={value} style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Icon size={11} />{value}{copy && <CopyButton text={copy} title="Copiar chave PIX" size={11} />}</span>)}
                 </div>
               </div>
             </div>

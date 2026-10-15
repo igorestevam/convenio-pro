@@ -6,6 +6,7 @@ import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import AppHeader from "./AppHeader";
+import CopyButton from "./CopyButton";
 
 
 /* ─── Constants & Helpers ─── */
@@ -192,7 +193,7 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
                 <span style={{ fontSize: 12, color: "#6B7280" }}>Salário Base: <b>{BRL(func.salary)}</b></span>
                 {func.email && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Mail size={11} />{func.email}</span>}
                 {func.phone && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Phone size={11} />{func.phone}</span>}
-                {func.pixKey && <span style={{ fontSize: 12, color: "#6B7280" }}>PIX: <b>{func.pixKey}</b></span>}
+                {func.pixKey && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", alignItems: "center" }}>PIX: <b style={{ marginLeft: 3 }}>{func.pixKey}</b><CopyButton text={func.pixKey} title="Copiar chave PIX" /></span>}
                 <span style={{ fontSize: 12, color: "#6B7280" }}>Vínculo: <b style={{ color: func.hasPayslip ? "#059669" : "#2563EB" }}>{func.hasPayslip ? "Carteira assinada" : "Freelancer"}</b></span>
               </div>
             </div>
@@ -914,7 +915,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                               <div style={{display:"flex", gap:6, marginTop:6, alignItems: "center"}}>
                                 {f.hasPayslip ? <Chip color="#059669" bg="#D1FAE5">Carteira assinada</Chip> : <Chip color="#2563EB" bg="#DBEAFE">Freelancer</Chip>}
                                 {f.pixKey ? (
-                                  <span style={{fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 6px", borderRadius: 4}}>PIX: <b>{f.pixKey}</b></span>
+                                  <span style={{fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center"}}>PIX: <b style={{ marginLeft: 3 }}>{f.pixKey}</b><CopyButton text={f.pixKey} title="Copiar chave PIX" size={11} /></span>
                                 ) : (
                                   <span style={{fontSize: 11, color: "#DC2626", background: "#FEE2E2", padding: "2px 6px", borderRadius: 4, display: "flex", alignItems: "center", gap: 3}} title="Sem chave PIX cadastrada"><AlertCircle size={11} /> Sem PIX</span>
                                 )}
@@ -991,7 +992,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                               <td style={{ padding: "12px 16px" }}>
                                 <div style={{fontWeight: 800, color: "#111"}}>{f.name}</div>
                                 {(f.email || f.phone) && <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>{[f.email, f.phone].filter(Boolean).join(' / ')}</div>}
-                                {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>Chave PIX: {f.pixKey}</div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
+                                {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2, display: "flex", alignItems: "center"}}>Chave PIX: {f.pixKey}<CopyButton text={f.pixKey} title="Copiar chave PIX" size={11} /></div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
                               </td>
                               <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF" }}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}</td>
