@@ -6,6 +6,7 @@ import Despesas from "./Despesas";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
+import closeOnBackdrop from "../utils/closeOnBackdrop";
 
 
 /* ─── Micro Componentes de UI ─── */
@@ -91,7 +92,7 @@ function ProfileModal({ token, initialName, initialEmail, onClose, onLogout }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+    <div {...closeOnBackdrop(onClose)} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       
       <Card style={{ width: "100%", maxWidth: 460, padding: 32, animation: "toastIn .2s ease" }}>

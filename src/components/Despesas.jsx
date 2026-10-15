@@ -6,6 +6,7 @@ import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
+import closeOnBackdrop from "../utils/closeOnBackdrop";
 import AppHeader from "./AppHeader";
 import CopyButton from "./CopyButton";
 
@@ -125,8 +126,8 @@ function LoadingScreen() {
   );
 }
 
-const Overlay = ({ children }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>{children}</div>
+const Overlay = ({ children, onClose }) => (
+  <div {...closeOnBackdrop(onClose)} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>{children}</div>
 );
 
 /* Consulta de CNPJ com várias fontes públicas: se uma falhar (fora do ar, limite de
@@ -228,7 +229,7 @@ function FornecedorModal({ data, isEdit, existing, onClose, onSave, onDelete }) 
   const col = (flex, min = 140) => ({ flex, minWidth: min });
 
   return (
-    <Overlay>
+    <Overlay onClose={onClose}>
       <Card style={{ width: "100%", maxWidth: 600, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>{isEdit ? "Editar Fornecedor" : "Novo Fornecedor"}</div>
@@ -356,7 +357,7 @@ function FornecedorDetailModal({ f, formas, onOpenEdit, onSetDespesa, onDeleteDe
   ].filter(i => i.value);
 
   return (
-    <Overlay>
+    <Overlay onClose={onClose}>
       <Card style={{ width: "100%", maxWidth: 760, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto", background: "#F7F7F8" }}>
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }} title="Fechar"><X size={20} /></button>
@@ -447,7 +448,7 @@ function FormasModal({ formas, usage, onAdd, onRename, onDelete, onClose }) {
   const saveEdit = () => { if (!editName.trim() || existe(editName, editId)) return; onRename(editId, editName.trim()); setEditId(null); };
 
   return (
-    <Overlay>
+    <Overlay onClose={onClose}>
       <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>Formas de Pagamento</div>

@@ -10,6 +10,7 @@ import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
 import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
+import closeOnBackdrop from "../utils/closeOnBackdrop";
 import AppHeader from "./AppHeader";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
@@ -115,7 +116,7 @@ function Toast({ msg, type, onDone }) {
 function NewClientModal({ data, onChange, onConfirm, onClose }) {
   useLockBodyScroll();
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+    <div {...closeOnBackdrop(onClose)} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
       <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>Novo Cliente</div>
@@ -155,7 +156,7 @@ function EditClientModal({ client, onUpdate, onDelete, onClose }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+    <div {...closeOnBackdrop(onClose)} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
       <Card style={{ width: "100%", maxWidth: 420, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>Editar Cliente</div>
@@ -335,7 +336,7 @@ function ClientDetailModal({ data, onDeleteConsumo, onUpdateConsumo, onSetStatus
   const selStyle = { padding: "8px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", fontFamily: "inherit", cursor: "pointer", outline: "none", color: "#374151", fontWeight: 600 };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
+    <div {...closeOnBackdrop(onClose)} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, backdropFilter: "blur(6px)", padding: 16 }}>
       <Card style={{ width: "100%", maxWidth: 760, padding: 28, animation: "toastIn .2s ease", maxHeight: "90vh", overflowY: "auto", background: "#F7F7F8" }}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }} title="Fechar"><X size={20} /></button>
