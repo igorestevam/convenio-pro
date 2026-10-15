@@ -13,7 +13,7 @@ export default function AppHeader({ subtitle, onMenu, onVoltar, children }) {
         <div onClick={onMenu} title="Voltar ao menu" style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
           <img src="/logo-convenio.png" alt="Logo" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0, borderRadius: 12 }} />
           <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>Manuella Guimarares</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#111", lineHeight: 1.1 }}>ConvênioPro</div>
             {subtitle && <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>{subtitle}</div>}
           </div>
         </div>
