@@ -193,7 +193,7 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
                 {func.email && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Mail size={11} />{func.email}</span>}
                 {func.phone && <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 4, alignItems: "center" }}><Phone size={11} />{func.phone}</span>}
                 {func.pixKey && <span style={{ fontSize: 12, color: "#6B7280" }}>PIX: <b>{func.pixKey}</b></span>}
-                {func.hasPayslip && <span style={{ fontSize: 12, color: "#059669" }}>Contracheque: <b>Sim</b></span>}
+                <span style={{ fontSize: 12, color: "#6B7280" }}>Vínculo: <b style={{ color: func.hasPayslip ? "#059669" : "#2563EB" }}>{func.hasPayslip ? "Carteira assinada" : "Freelancer"}</b></span>
               </div>
             </div>
           </div>
@@ -337,9 +337,9 @@ function FuncionarioModal({ data, isEdit, onClose, onSave, onDelete }) {
           </div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <Lbl>POSSUI CONTRACHEQUE?</Lbl>
-              <select value={form.hasPayslip ? "SIM" : "NAO"} onChange={e => setForm({...form, hasPayslip: e.target.value === "SIM"})} style={{ ...inpBase, width: "100%", padding: "10px", fontWeight: 700 }}>
-                <option value="SIM">Sim</option><option value="NAO">Não</option>
+              <Lbl>CARTEIRA ASSINADA OU FREELANCER?</Lbl>
+              <select value={form.hasPayslip ? "CLT" : "FREELANCER"} onChange={e => setForm({...form, hasPayslip: e.target.value === "CLT"})} style={{ ...inpBase, width: "100%", padding: "10px", fontWeight: 700 }}>
+                <option value="CLT">Carteira assinada</option><option value="FREELANCER">Freelancer</option>
               </select>
             </div>
           </div>
@@ -912,7 +912,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                               <div style={{fontWeight: 900, color: "#111", fontSize: 14}}>{f.name} {!f.active && <span style={{fontSize:10,color:"#DC2626",fontWeight:800,marginLeft:4}}>(Inativo)</span>}</div>
                               {f.phone && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{f.phone}</div>}
                               <div style={{display:"flex", gap:6, marginTop:6, alignItems: "center"}}>
-                                {f.hasPayslip && <FileText size={14} color="#059669" title="Possui Contracheque" />}
+                                {f.hasPayslip ? <Chip color="#059669" bg="#D1FAE5">Carteira assinada</Chip> : <Chip color="#2563EB" bg="#DBEAFE">Freelancer</Chip>}
                                 {f.pixKey ? (
                                   <span style={{fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 6px", borderRadius: 4}}>PIX: <b>{f.pixKey}</b></span>
                                 ) : (
