@@ -115,7 +115,10 @@ async function main() {
     const f = { id: uid(), empresaId, name, salary, email, phone, pixKey, hasPayslip, active, consumo: 0, entries: [] };
     for (let off = 3; off >= (active ? 0 : 2); off--) {
       const qtd = Math.floor(rnd() * 3);
-      for (let k = 0; k < qtd; k++) f.entries.push({ id: uid(), date: dateIn(off, 5 + Math.floor(rnd() * 20)), value: between(50, 400) });
+      for (let k = 0; k < qtd; k++) f.entries.push({ id: uid(), date: dateIn(off, 5 + Math.floor(rnd() * 20)), value: between(50, 400), type: 'VALE' });
+      // consumos lançados como itens (data + valor), igual aos vales
+      const qtdConsumo = Math.floor(rnd() * 4);
+      for (let k = 0; k < qtdConsumo; k++) f.entries.push({ id: uid(), date: dateIn(off, 1 + Math.floor(rnd() * 27)), value: between(12, 60), type: 'CONSUMO' });
     }
     return f;
   });
@@ -125,7 +128,8 @@ async function main() {
   funcionarios.forEach((f, i) => {
     for (let off = 3; off >= 0; off--) {
       if (!f.active && off < 2) continue;
-      const consumo = i % 2 === 0 ? between(30, 250) : 0;
+      // só o 1º funcionário mantém um consumo no formato antigo (valor único do mês), para testar a compatibilidade
+      const consumo = i === 0 && off === 3 ? 85 : 0;
       folhaExtras.push({ key: `${f.id}_${monthKey(off)}`, empresaId, status: off >= 1 ? 'PAGO' : undefined, consumo });
     }
   });
