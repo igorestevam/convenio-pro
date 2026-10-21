@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, User, Mail, Phone } from "lucide-react";
+import { LogOut, Search, Plus, FileText, CheckCircle2, Clock, Edit, Trash2, X, Users, DollarSign, AlertCircle, Download, User, Mail, Phone, Upload, FileCheck2, AlertTriangle } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import AppFooter from "./AppFooter";
@@ -8,6 +8,7 @@ import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import closeOnBackdrop from "../utils/closeOnBackdrop";
 import AppHeader from "./AppHeader";
 import CopyButton from "./CopyButton";
+import ImportContrachequesModal from "./ImportContrachequesModal";
 
 
 /* ─── Constants & Helpers ─── */
@@ -152,9 +153,11 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
       const consumoAntigo = fExtra.consumo || 0; // valor único do formato antigo
       const consumo = consumoAntigo + entriesList.filter(isConsumo).reduce((s, x) => s + x.value, 0);
       const status = fExtra.status || "PENDENTE";
-      return { month, key, valesTotal, valesList, entriesList, consumo, consumoAntigo, status };
+      const contracheque = fExtra.contracheque || null;
+      const liquido = contracheque ? contracheque.liquido : (Number(func.salary) || 0) - valesTotal - consumo;
+      return { month, key, valesTotal, valesList, entriesList, consumo, consumoAntigo, status, contracheque, liquido };
     });
-  }, [func.entries, folhaStatus, func.id]);
+  }, [func.entries, func.salary, folhaStatus, func.id]);
 
   const years = useMemo(() => [...new Set(grouped.map(g => g.month.split("-")[0]))].sort().reverse(), [grouped]);
   const filtered = grouped.filter(g => {
@@ -225,8 +228,9 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
       {filtered.map(mData => {
         const isPago = mData.status === "PAGO";
         const base = Number(func.salary) || 0;
-        const liquido = base - mData.valesTotal - mData.consumo;
-        const totalPago = base - mData.consumo;
+        const cc = mData.contracheque;
+        const liquido = mData.liquido;
+        const totalPago = cc ? cc.liquido + (cc.adiantamento || 0) : base - mData.consumo;
 
         return (
           <Card key={mData.month} style={{ marginBottom: 14, padding: 0 }}>
@@ -235,6 +239,7 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>{MONTHS[parseInt(mData.month.split("-")[1]) - 1]} / {mData.month.split("-")[0]}</span>
                 {isPago ? <Chip color="#15803D" bg="#DCFCE7"><CheckCircle2 size={12}/> Pago</Chip> : <Chip color="#D97706" bg="#FEF3C7"><Clock size={12}/> Pendente</Chip>}
+                {cc && <Chip color="#2563EB" bg="#DBEAFE"><FileCheck2 size={12}/> Contracheque</Chip>}
               </div>
               <div style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 6 }}>Vales: <b style={{color: "#D97706"}}>{BRL(mData.valesTotal)}</b></span>
@@ -252,25 +257,39 @@ function FuncionarioDetailModal({ func, folhaStatus, onAddEntry, onDeleteEntry, 
 
             {/* Painel Matemático Explicativo */}
             <div style={{ padding: "16px 20px", display: "flex", gap: 20, flexWrap: "wrap", borderBottom: mData.entriesList.length > 0 || mData.consumoAntigo > 0 ? "1px solid #F3F4F6" : "none" }}>
+              {cc ? (
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span>CONTRACHEQUE IMPORTADO</span>
+                    {!isPago && <button onClick={() => { if (window.confirm("Remover o contracheque deste mês? O valor a pagar volta a ser calculado pelo salário base.")) onUpdateFolhaExtra(mData.key, { contracheque: null }); }} style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>Remover</button>}
+                  </div>
+                  {cc.salarioBase != null && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#6B7280"}}>Salário base (contracheque):</span> <span style={{fontWeight: 700}}>{BRL(cc.salarioBase)}</span></div>}
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#D97706"}}>Adiantamento (vales):</span> <span style={{fontWeight: 700}}>- {BRL(cc.adiantamento)}</span></div>
+                    <div style={{ fontSize: 11, color: Math.abs((cc.adiantamento || 0) - mData.valesTotal) > 0.01 ? "#B45309" : "#9CA3AF", marginTop: -2, marginBottom: 6, textAlign: "right" }}>lançado no sistema: {BRL(mData.valesTotal)}{Math.abs((cc.adiantamento || 0) - mData.valesTotal) > 0.01 ? " ⚠" : " ✓"}</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#4F46E5"}}>Descontos diversos (consumos):</span> <span style={{fontWeight: 700}}>- {BRL(cc.descontosDiversos)}</span></div>
+                    <div style={{ fontSize: 11, color: Math.abs((cc.descontosDiversos || 0) - mData.consumo) > 0.01 ? "#B45309" : "#9CA3AF", marginTop: -2, marginBottom: 6, textAlign: "right" }}>lançado no sistema: {BRL(mData.consumo)}{Math.abs((cc.descontosDiversos || 0) - mData.consumo) > 0.01 ? " ⚠" : " ✓"}</div>
+                </div>
+              ) : (
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, marginBottom: 6 }}>FECHAMENTO DO MÊS</div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#6B7280"}}>Salário Base Bruto:</span> <span style={{fontWeight: 700}}>{BRL(base)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}><span style={{color: "#4F46E5"}}>Consumos (Desconto):</span> <span style={{fontWeight: 700}}>- {BRL(mData.consumo)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13, opacity: isPago ? 0.3 : 1 }}><span style={{color: "#D97706"}}>Vales Retirados (Adiantamentos):</span> <span style={{fontWeight: 700}}>- {BRL(mData.valesTotal)}</span></div>
               </div>
+              )}
               <div style={{ width: 1, background: "#E5E7EB" }}></div>
               <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                  {isPago ? (
                     <>
                        <div style={{ fontSize: 11, fontWeight: 800, color: "#15803D", letterSpacing: .5 }}>TOTAL PAGO REFERENTE AO MÊS</div>
                        <div style={{ fontSize: 28, fontWeight: 900, color: "#15803D" }}>{BRL(totalPago)}</div>
-                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Os vales não foram subtraídos deste total final porque representam um adiantamento do salário.</div>
+                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{cc ? "Líquido do contracheque + adiantamento (vales já pagos antes)." : "Os vales não foram subtraídos deste total final porque representam um adiantamento do salário."}</div>
                     </>
                  ) : (
                     <>
                        <div style={{ fontSize: 11, fontWeight: 800, color: "#D97706", letterSpacing: .5 }}>LÍQUIDO A PAGAR AGORA</div>
                        <div style={{ fontSize: 28, fontWeight: 900, color: "#D97706" }}>{BRL(liquido)}</div>
-                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Abatendo os vales e os consumos do salário base.</div>
+                       <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{cc ? "Valor líquido do contracheque (vales e consumos já descontados pelo contador)." : "Abatendo os vales e os consumos do salário base."}</div>
                     </>
                  )}
               </div>
@@ -417,6 +436,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
   const [fs, setFs] = useState("all");
   const [editingFuncionario, setEditingFuncionario] = useState(null);
   const [showNewFuncionarioModal, setShowNewFuncionarioModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
@@ -465,15 +485,16 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
         const fExtra = folhaStatus[`${f.id}_${month}`] || {};
         const consumo = (fExtra.consumo || 0) + monthEntries.filter(isConsumo).reduce((s, x) => s + x.value, 0);
         
-        if (isAct || monthEntries.length > 0 || consumo > 0 || fExtra.status) {
+        if (isAct || monthEntries.length > 0 || consumo > 0 || fExtra.status || fExtra.contracheque) {
           const vales = valeEntries.reduce((s, x) => s + x.value, 0);
-          const base = Number(f.salary) || 0;
-          const liquido = base - vales - consumo;
+          const cc = fExtra.contracheque || null;
+          const base = cc?.salarioBase ?? (Number(f.salary) || 0);
+          const liquido = cc ? cc.liquido : base - vales - consumo;
           
           tB += base; tV += vales; tL += liquido;
           
           funcFolhas.push({
-            ...f, base, vales, consumos: consumo, liquido,
+            ...f, base, vales, consumos: consumo, liquido, contracheque: cc,
             key: `${f.id}_${month}`,
             status: fExtra.status || "PENDENTE"
           });
@@ -565,8 +586,22 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
       await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify(data) });
       setFolhaStatus(p => ({ ...p, [key]: { ...(p[key] || {}), ...data } }));
       if (data.consumo !== undefined) showToast("Consumo excluído!");
+      if (data.contracheque === null) showToast("Contracheque removido.");
       if (data.status) showToast(data.status === "PAGO" ? "Folha paga!" : "Pagamento desfeito.");
     } catch (err) { showToast("Erro ao atualizar", "error"); }
+  };
+
+  const handleImportContracheques = async (itens) => {
+    let ok = 0;
+    for (const { key, contracheque } of itens) {
+      try {
+        await fetchAPI(`/folhaextras/${key}`, { method: 'POST', body: JSON.stringify({ contracheque }) });
+        setFolhaStatus(p => ({ ...p, [key]: { ...(p[key] || {}), contracheque } }));
+        ok++;
+      } catch (err) { console.error("Falha ao importar contracheque", key, err); }
+    }
+    setShowImport(false);
+    showToast(ok === itens.length ? `${ok} contracheque${ok !== 1 ? "s" : ""} importado${ok !== 1 ? "s" : ""}!` : `${ok} de ${itens.length} importados — tente de novo os que faltaram.`, ok === itens.length ? "success" : "error");
   };
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -591,7 +626,7 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
     const [year, monthNum] = mData.month.split("-");
     const monthName = MONTHS[parseInt(monthNum) - 1];
     const base = Number(func.salary) || 0;
-    const liquido = base - mData.valesTotal - mData.consumo;
+    const liquido = mData.liquido;
 
     // ── Bloco de informações do funcionário (igual ao bloco de cliente no CC) ──
     const infoRows = [
@@ -963,7 +998,10 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                   {filteredFolhasList.length} registro{filteredFolhasList.length !== 1 ? "s" : ""}
                 </span>
               </div>
-              <Btn variant="success" onClick={exportBatch} style={{ padding: "10px 18px" }}><Download size={15} /> Exportar XLSX</Btn>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Btn variant="secondary" onClick={() => setShowImport(true)} style={{ padding: "10px 18px" }}><Upload size={15} /> Importar contracheques (PDF)</Btn>
+                <Btn variant="success" onClick={exportBatch} style={{ padding: "10px 18px" }}><Download size={15} /> Exportar XLSX</Btn>
+              </div>
             </div>
 
             {filteredFolhasList.length === 0 && (
@@ -1007,9 +1045,9 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
                                 {(f.email || f.phone) && <div style={{fontSize: 10, color: "#6B7280", marginTop: 2}}>{[f.email, f.phone].filter(Boolean).join(' / ')}</div>}
                                 {f.pixKey ? <div style={{fontSize: 10, color: "#6B7280", marginTop: 2, display: "flex", alignItems: "center"}}>Chave PIX: {f.pixKey}<CopyButton text={f.pixKey} title="Copiar chave PIX" size={11} /></div> : <div style={{fontSize: 10, color: "#DC2626", marginTop: 2, display: "flex", alignItems: "center", gap: 3}}><AlertCircle size={10} /> Sem PIX</div>}
                               </td>
-                              <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}</td>
-                              <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF" }}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}</td>
-                              <td style={{ padding: "12px 16px", fontWeight: 700, color: f.consumos > 0 ? "#4F46E5" : "#9CA3AF" }}>{f.consumos > 0 ? `- ${BRL(f.consumos)}` : "R$ 0,00"}</td>
+                              <td style={{ padding: "12px 16px", color: "#6B7280" }}>{BRL(f.base)}{f.contracheque && <div style={{ marginTop: 3 }}><Chip color="#2563EB" bg="#DBEAFE"><FileCheck2 size={10}/> Contracheque</Chip></div>}</td>
+                              <td style={{ padding: "12px 16px", fontWeight: 700, color: f.vales > 0 ? "#D97706" : "#9CA3AF", opacity: f.contracheque ? .55 : 1 }} title={f.contracheque ? "Já descontado no contracheque" : undefined}>{f.vales > 0 ? `- ${BRL(f.vales)}` : "R$ 0,00"}{f.contracheque && Math.abs((f.contracheque.adiantamento || 0) - f.vales) > 0.01 && <span title={`Contracheque: ${BRL(f.contracheque.adiantamento)}`}> <AlertTriangle size={11} color="#B45309" /></span>}</td>
+                              <td style={{ padding: "12px 16px", fontWeight: 700, color: f.consumos > 0 ? "#4F46E5" : "#9CA3AF", opacity: f.contracheque ? .55 : 1 }} title={f.contracheque ? "Já descontado no contracheque" : undefined}>{f.consumos > 0 ? `- ${BRL(f.consumos)}` : "R$ 0,00"}{f.contracheque && Math.abs((f.contracheque.descontosDiversos || 0) - f.consumos) > 0.01 && <span title={`Contracheque: ${BRL(f.contracheque.descontosDiversos)}`}> <AlertTriangle size={11} color="#B45309" /></span>}</td>
                               <td style={{ padding: "12px 16px", fontWeight: 900, color: f.status === "PAGO" ? "#15803D" : "#D97706", fontSize: 14 }}>{BRL(f.liquido)}</td>
                               <td style={{ padding: "12px 16px" }}>
                                 {f.status === "PAGO" ? (
@@ -1046,6 +1084,10 @@ export default function SalarioFuncionario({ token, empresaEmail, empresaNome, o
           onExportFuncionarioMes={exportFuncionarioMes}
           onClose={() => setSelId(null)}
         />
+      )}
+
+      {showImport && (
+        <ImportContrachequesModal funcionarios={funcionarios} folhaStatus={folhaStatus} onImport={handleImportContracheques} onClose={() => setShowImport(false)} />
       )}
 
       {showNewFuncionarioModal && (

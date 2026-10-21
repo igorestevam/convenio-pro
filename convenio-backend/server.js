@@ -144,15 +144,24 @@ app.delete('/api/funcionarios/:id/entries/:entryId', authMiddleware, async (req,
 
 // ROTAS DE FOLHA EXTRA (STATUS DO MÊS)
 app.get('/api/folhaextras', authMiddleware, async (req, res) => {
-  const m = {}; (await FolhaExtra.find({ empresaId: req.empresa.id })).forEach(e => m[e.key] = { status: e.status, consumo: e.consumo || 0 }); res.json(m);
+  const m = {}; (await FolhaExtra.find({ empresaId: req.empresa.id })).forEach(e => m[e.key] = { status: e.status, consumo: e.consumo || 0, contracheque: e.contracheque?.liquido != null ? e.contracheque : null }); res.json(m);
 });
 app.post('/api/folhaextras/:key', authMiddleware, async (req, res) => {
   const update = {};
   if (req.body.status !== undefined) update.status = req.body.status;
   if (req.body.consumo !== undefined) update.consumo = req.body.consumo;
+  const ops = { $set: update };
+  if (req.body.contracheque === null) ops.$unset = { contracheque: 1 };
+  else if (req.body.contracheque !== undefined) {
+    const c = req.body.contracheque;
+    if (!(Number(c.liquido) >= 0)) return res.status(400).json({ erro: 'Contracheque sem valor líquido.' });
+    const num = (v) => (v == null || v === '' ? undefined : Number(v));
+    update.contracheque = { liquido: Number(c.liquido), salarioBase: num(c.salarioBase), adiantamento: num(c.adiantamento), descontosDiversos: num(c.descontosDiversos),
+      totalProventos: num(c.totalProventos), totalDescontos: num(c.totalDescontos), nome: c.nome, importadoEm: new Date() };
+  }
   await FolhaExtra.findOneAndUpdate(
     { key: req.params.key, empresaId: req.empresa.id },
-    { $set: update },
+    ops,
     { upsert: true }
   );
   res.json({ success: true });

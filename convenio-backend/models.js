@@ -31,7 +31,9 @@ const FuncionarioSchema = new mongoose.Schema({
 });
 
 const FolhaExtraSchema = new mongoose.Schema({
-  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String, consumo: Number
+  key: String, empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }, status: String, consumo: Number,
+  // contracheque importado do PDF: o líquido dele vira o valor a pagar no mês
+  contracheque: { liquido: Number, salarioBase: Number, adiantamento: Number, descontosDiversos: Number, totalProventos: Number, totalDescontos: Number, nome: String, importadoEm: Date }
 });
 
 const Funcionario = mongoose.model('Funcionario', FuncionarioSchema);
