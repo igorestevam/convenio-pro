@@ -12,6 +12,7 @@ import { API_URL } from "../config";
 import useLockBodyScroll from "../hooks/useLockBodyScroll";
 import closeOnBackdrop from "../utils/closeOnBackdrop";
 import AppHeader from "./AppHeader";
+import { CopyText } from "./CopyButton";
 
 /* ─── Constants ─────────────────────────────────────────────────── */
 const MONTHS = [
@@ -260,7 +261,7 @@ function ClientsTable({ clients, latestMethodByClient, unpaidTotalsByClient, onS
                   <td onClick={() => onSelect(client.id)} title="Ver detalhes do cliente" style={{ padding: "12px 16px 12px 20px", minWidth: 180, cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: "linear-gradient(135deg,#4F46E5,#6D28D9)", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color="#fff" /></div>
-                      <div><div style={{ fontWeight: 800, color: "#111", fontSize: 13 }}>{client.name} {client.active === false && <span style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, marginLeft: 4 }}>(Inativo)</span>}</div>{client.phone && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{client.phone}</div>}</div>
+                      <div><div style={{ fontWeight: 800, color: "#111", fontSize: 13 }}>{client.name} {client.active === false && <span style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, marginLeft: 4 }}>(Inativo)</span>}</div>{(client.phone || client.email) && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{client.phone && <CopyText text={client.phone} icon={Phone} title="Copiar telefone" />}{client.email && <CopyText text={client.email} icon={Mail} title="Copiar e-mail" />}</div>}</div>
                     </div>
                   </td>
                   <td style={{ padding: "8px 8px" }}><InlineDate clientId={client.id} /></td>
@@ -498,9 +499,9 @@ function FaturasTab({ faturas, total, years, fy, setFy, fm, setFm, fs, setFs, on
                                 {f.clientName}
                               </span>
                               {(f.clientPhone || f.clientEmail) && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 10, marginLeft: 10, fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" }}>
-                                  {f.clientPhone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} />{f.clientPhone}</span>}
-                                  {f.clientEmail && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Mail size={11} />{f.clientEmail}</span>}
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 10, fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" }}>
+                                  {f.clientPhone && <CopyText text={f.clientPhone} icon={Phone} title="Copiar telefone" />}
+                                  {f.clientEmail && <CopyText text={f.clientEmail} icon={Mail} title="Copiar e-mail" />}
                                 </span>
                               )}
                             </td>
